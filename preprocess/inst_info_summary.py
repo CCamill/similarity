@@ -172,8 +172,8 @@ if isDebug:
     input_dir = args.input_dir
     output_dir = args.output_file
 else:
-    input_dir = "E:\Desktop\IR2SOG\ll_files"
-    output_dir = "E:\Desktop\IR2SOG\summary_files"
+    input_dir = "E:\Desktop\similarity\ll_files"
+    output_dir = "E:\Desktop\similarity\summary_files"
     print("Running mode")
 
 if __name__ == "__main__":
