@@ -1,0 +1,44 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "summary_test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\test\\summary_test.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "inst_info_summary",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\preprocess\\inst_info_summary.py",
+            "console": "externalTerminal",
+            "args": [
+                "--input_dir",
+                "${workspaceFolder}\\ll_files",
+                "--output_file",
+                "${workspaceFolder}\\summary_files"
+            ]
+        },
+        {
+            "name": "binary_lifting",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\preprocess\\binary_lifting.py",
+            "console": "externalTerminal",
+            "args": []
+        },
+        {
+            "name": "gen_iscg",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\preprocess\\gen_iscg.py",
+            "console": "integratedTerminal",
+            "args": []
+        }
+    ]
+}

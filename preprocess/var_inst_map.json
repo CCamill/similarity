@@ -1,0 +1,691 @@
+[
+    {
+        "function_name": "main",
+        "function_var_inst_map": [
+            {
+                "inst_id": 0,
+                "instruction": "%1 = alloca i32, align 4",
+                "operand_list": [
+                    "i32 1"
+                ],
+                "var_name": "%1",
+                "opcode": "alloca"
+            },
+            {
+                "inst_id": 1,
+                "instruction": "%2 = alloca i32, align 4",
+                "operand_list": [
+                    "i32 1"
+                ],
+                "var_name": "%2",
+                "opcode": "alloca"
+            },
+            {
+                "inst_id": 2,
+                "instruction": "%3 = bitcast i32* %1 to i8*",
+                "operand_list": [
+                    "%1 = alloca i32, align 4"
+                ],
+                "var_name": "%3",
+                "opcode": "bitcast"
+            },
+            {
+                "inst_id": 3,
+                "instruction": "call void @llvm.lifetime.start.p0i8(i64 4, i8* nonnull %3) #5",
+                "operand_list": [
+                    "i64 4",
+                    "%3 = bitcast i32* %1 to i8*",
+                    "; Function Attrs: argmemonly nofree nosync nounwind willreturn\ndeclare void @llvm.lifetime.start.p0i8(i64 immarg, i8* nocapture) #1"
+                ],
+                "var_name": null,
+                "called_function_name": "llvm.lifetime.start.p0i8",
+                "called_function_return_type": "void",
+                "called_function_arguments": [
+                    "i64 4",
+                    "%3 = bitcast i32* %1 to i8*"
+                ],
+                "opcode": "call"
+            },
+            {
+                "inst_id": 4,
+                "instruction": "%4 = bitcast i32* %2 to i8*",
+                "operand_list": [
+                    "%2 = alloca i32, align 4"
+                ],
+                "var_name": "%4",
+                "opcode": "bitcast"
+            },
+            {
+                "inst_id": 5,
+                "instruction": "call void @llvm.lifetime.start.p0i8(i64 4, i8* nonnull %4) #5",
+                "operand_list": [
+                    "i64 4",
+                    "%4 = bitcast i32* %2 to i8*",
+                    "; Function Attrs: argmemonly nofree nosync nounwind willreturn\ndeclare void @llvm.lifetime.start.p0i8(i64 immarg, i8* nocapture) #1"
+                ],
+                "var_name": null,
+                "called_function_name": "llvm.lifetime.start.p0i8",
+                "called_function_return_type": "void",
+                "called_function_arguments": [
+                    "i64 4",
+                    "%4 = bitcast i32* %2 to i8*"
+                ],
+                "opcode": "call"
+            },
+            {
+                "inst_id": 6,
+                "instruction": "%5 = call i32 (i8*, ...) @__isoc99_scanf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str, i64 0, i64 0), i32* nonnull %2, i32* nonnull %1)",
+                "operand_list": [
+                    "i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str, i64 0, i64 0)",
+                    "%2 = alloca i32, align 4",
+                    "%1 = alloca i32, align 4",
+                    "; Function Attrs: nofree nounwind\ndeclare dso_local i32 @__isoc99_scanf(i8* nocapture readonly, ...) local_unnamed_addr #2"
+                ],
+                "var_name": "%5",
+                "called_function_name": "__isoc99_scanf",
+                "called_function_return_type": "dso_local i32",
+                "called_function_arguments": [
+                    "i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str, i64 0, i64 0)",
+                    "%2 = alloca i32, align 4",
+                    "%1 = alloca i32, align 4"
+                ],
+                "opcode": "call"
+            },
+            {
+                "inst_id": 7,
+                "instruction": "%6 = icmp eq i32 %5, -1",
+                "operand_list": [
+                    "%5 = call i32 (i8*, ...) @__isoc99_scanf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str, i64 0, i64 0), i32* nonnull %2, i32* nonnull %1)",
+                    "i32 -1"
+                ],
+                "var_name": "%6",
+                "opcode": "icmp"
+            },
+            {
+                "inst_id": 8,
+                "instruction": "br i1 %6, label %45, label %7",
+                "operand_list": [],
+                "var_name": null,
+                "opcode": "br"
+            },
+            {
+                "inst_id": 9,
+                "instruction": "%8 = load i32, i32* %2, align 4, !tbaa !2",
+                "operand_list": [
+                    "%2 = alloca i32, align 4"
+                ],
+                "var_name": "%8",
+                "opcode": "load"
+            },
+            {
+                "inst_id": 10,
+                "instruction": "%9 = load i32, i32* %1, align 4, !tbaa !2",
+                "operand_list": [
+                    "%1 = alloca i32, align 4"
+                ],
+                "var_name": "%9",
+                "opcode": "load"
+            },
+            {
+                "inst_id": 11,
+                "instruction": "%10 = icmp sgt i32 %8, %9",
+                "operand_list": [
+                    "%8 = load i32, i32* %2, align 4, !tbaa !2",
+                    "%9 = load i32, i32* %1, align 4, !tbaa !2"
+                ],
+                "var_name": "%10",
+                "opcode": "icmp"
+            },
+            {
+                "inst_id": 12,
+                "instruction": "br i1 %10, label %39, label %11",
+                "operand_list": [],
+                "var_name": null,
+                "opcode": "br"
+            },
+            {
+                "inst_id": 13,
+                "instruction": "%12 = phi i32 [ %33, %32 ], [ %9, %7 ]",
+                "operand_list": [
+                    "%33 = phi i32 [ %31, %28 ], [ %12, %11 ]",
+                    "%9 = load i32, i32* %1, align 4, !tbaa !2"
+                ],
+                "var_name": "%12",
+                "opcode": "phi"
+            },
+            {
+                "inst_id": 14,
+                "instruction": "%13 = phi i32 [ %34, %32 ], [ 0, %7 ]",
+                "operand_list": [
+                    "%34 = phi i32 [ %30, %28 ], [ %13, %11 ]",
+                    "i32 0"
+                ],
+                "var_name": "%13",
+                "opcode": "phi"
+            },
+            {
+                "inst_id": 15,
+                "instruction": "%14 = phi i32 [ %35, %32 ], [ %8, %7 ]",
+                "operand_list": [
+                    "%35 = add nsw i32 %14, 1",
+                    "%8 = load i32, i32* %2, align 4, !tbaa !2"
+                ],
+                "var_name": "%14",
+                "opcode": "phi"
+            },
+            {
+                "inst_id": 16,
+                "instruction": "%15 = srem i32 %14, 10",
+                "operand_list": [
+                    "%14 = phi i32 [ %35, %32 ], [ %8, %7 ]",
+                    "i32 10"
+                ],
+                "var_name": "%15",
+                "opcode": "srem"
+            },
+            {
+                "inst_id": 17,
+                "instruction": "%16 = sdiv i32 %14, 10",
+                "operand_list": [
+                    "%14 = phi i32 [ %35, %32 ], [ %8, %7 ]",
+                    "i32 10"
+                ],
+                "var_name": "%16",
+                "opcode": "sdiv"
+            },
+            {
+                "inst_id": 18,
+                "instruction": "%17 = srem i32 %16, 10",
+                "operand_list": [
+                    "%16 = sdiv i32 %14, 10",
+                    "i32 10"
+                ],
+                "var_name": "%17",
+                "opcode": "srem"
+            },
+            {
+                "inst_id": 19,
+                "instruction": "%18 = sdiv i32 %14, 100",
+                "operand_list": [
+                    "%14 = phi i32 [ %35, %32 ], [ %8, %7 ]",
+                    "i32 100"
+                ],
+                "var_name": "%18",
+                "opcode": "sdiv"
+            },
+            {
+                "inst_id": 20,
+                "instruction": "%19 = mul nsw i32 %15, %15",
+                "operand_list": [
+                    "%15 = srem i32 %14, 10",
+                    "%15 = srem i32 %14, 10"
+                ],
+                "var_name": "%19",
+                "opcode": "mul"
+            },
+            {
+                "inst_id": 21,
+                "instruction": "%20 = mul nsw i32 %19, %15",
+                "operand_list": [
+                    "%19 = mul nsw i32 %15, %15",
+                    "%15 = srem i32 %14, 10"
+                ],
+                "var_name": "%20",
+                "opcode": "mul"
+            },
+            {
+                "inst_id": 22,
+                "instruction": "%21 = mul nsw i32 %17, %17",
+                "operand_list": [
+                    "%17 = srem i32 %16, 10",
+                    "%17 = srem i32 %16, 10"
+                ],
+                "var_name": "%21",
+                "opcode": "mul"
+            },
+            {
+                "inst_id": 23,
+                "instruction": "%22 = mul nsw i32 %21, %17",
+                "operand_list": [
+                    "%21 = mul nsw i32 %17, %17",
+                    "%17 = srem i32 %16, 10"
+                ],
+                "var_name": "%22",
+                "opcode": "mul"
+            },
+            {
+                "inst_id": 24,
+                "instruction": "%23 = mul nsw i32 %18, %18",
+                "operand_list": [
+                    "%18 = sdiv i32 %14, 100",
+                    "%18 = sdiv i32 %14, 100"
+                ],
+                "var_name": "%23",
+                "opcode": "mul"
+            },
+            {
+                "inst_id": 25,
+                "instruction": "%24 = mul nsw i32 %23, %18",
+                "operand_list": [
+                    "%23 = mul nsw i32 %18, %18",
+                    "%18 = sdiv i32 %14, 100"
+                ],
+                "var_name": "%24",
+                "opcode": "mul"
+            },
+            {
+                "inst_id": 26,
+                "instruction": "%25 = add i32 %24, %20",
+                "operand_list": [
+                    "%24 = mul nsw i32 %23, %18",
+                    "%20 = mul nsw i32 %19, %15"
+                ],
+                "var_name": "%25",
+                "opcode": "add"
+            },
+            {
+                "inst_id": 27,
+                "instruction": "%26 = add i32 %25, %22",
+                "operand_list": [
+                    "%25 = add i32 %24, %20",
+                    "%22 = mul nsw i32 %21, %17"
+                ],
+                "var_name": "%26",
+                "opcode": "add"
+            },
+            {
+                "inst_id": 28,
+                "instruction": "%27 = icmp eq i32 %26, %14",
+                "operand_list": [
+                    "%26 = add i32 %25, %22",
+                    "%14 = phi i32 [ %35, %32 ], [ %8, %7 ]"
+                ],
+                "var_name": "%27",
+                "opcode": "icmp"
+            },
+            {
+                "inst_id": 29,
+                "instruction": "br i1 %27, label %28, label %32",
+                "operand_list": [],
+                "var_name": null,
+                "opcode": "br"
+            },
+            {
+                "inst_id": 30,
+                "instruction": "%29 = call i32 (i8*, ...) @printf(i8* nonnull dereferenceable(1) getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i64 0, i64 0), i32 %14)",
+                "operand_list": [
+                    "i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i64 0, i64 0)",
+                    "%14 = phi i32 [ %35, %32 ], [ %8, %7 ]",
+                    "; Function Attrs: nofree nounwind\ndeclare dso_local i32 @printf(i8* nocapture readonly, ...) local_unnamed_addr #2"
+                ],
+                "var_name": "%29",
+                "called_function_name": "printf",
+                "called_function_return_type": "dso_local i32",
+                "called_function_arguments": [
+                    "i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i64 0, i64 0)",
+                    "%14 = phi i32 [ %35, %32 ], [ %8, %7 ]"
+                ],
+                "opcode": "call"
+            },
+            {
+                "inst_id": 31,
+                "instruction": "%30 = add nsw i32 %13, 1",
+                "operand_list": [
+                    "%13 = phi i32 [ %34, %32 ], [ 0, %7 ]",
+                    "i32 1"
+                ],
+                "var_name": "%30",
+                "opcode": "add"
+            },
+            {
+                "inst_id": 32,
+                "instruction": "%31 = load i32, i32* %1, align 4, !tbaa !2",
+                "operand_list": [
+                    "%1 = alloca i32, align 4"
+                ],
+                "var_name": "%31",
+                "opcode": "load"
+            },
+            {
+                "inst_id": 33,
+                "instruction": "br label %32",
+                "operand_list": [],
+                "var_name": null,
+                "opcode": "br"
+            },
+            {
+                "inst_id": 34,
+                "instruction": "%33 = phi i32 [ %31, %28 ], [ %12, %11 ]",
+                "operand_list": [
+                    "%31 = load i32, i32* %1, align 4, !tbaa !2",
+                    "%12 = phi i32 [ %33, %32 ], [ %9, %7 ]"
+                ],
+                "var_name": "%33",
+                "opcode": "phi"
+            },
+            {
+                "inst_id": 35,
+                "instruction": "%34 = phi i32 [ %30, %28 ], [ %13, %11 ]",
+                "operand_list": [
+                    "%30 = add nsw i32 %13, 1",
+                    "%13 = phi i32 [ %34, %32 ], [ 0, %7 ]"
+                ],
+                "var_name": "%34",
+                "opcode": "phi"
+            },
+            {
+                "inst_id": 36,
+                "instruction": "%35 = add nsw i32 %14, 1",
+                "operand_list": [
+                    "%14 = phi i32 [ %35, %32 ], [ %8, %7 ]",
+                    "i32 1"
+                ],
+                "var_name": "%35",
+                "opcode": "add"
+            },
+            {
+                "inst_id": 37,
+                "instruction": "%36 = icmp slt i32 %14, %33",
+                "operand_list": [
+                    "%14 = phi i32 [ %35, %32 ], [ %8, %7 ]",
+                    "%33 = phi i32 [ %31, %28 ], [ %12, %11 ]"
+                ],
+                "var_name": "%36",
+                "opcode": "icmp"
+            },
+            {
+                "inst_id": 38,
+                "instruction": "br i1 %36, label %11, label %37",
+                "operand_list": [],
+                "var_name": null,
+                "opcode": "br"
+            },
+            {
+                "inst_id": 39,
+                "instruction": "%38 = icmp eq i32 %34, 0",
+                "operand_list": [
+                    "%34 = phi i32 [ %30, %28 ], [ %13, %11 ]",
+                    "i32 0"
+                ],
+                "var_name": "%38",
+                "opcode": "icmp"
+            },
+            {
+                "inst_id": 40,
+                "instruction": "br i1 %38, label %39, label %41",
+                "operand_list": [],
+                "var_name": null,
+                "opcode": "br"
+            },
+            {
+                "inst_id": 41,
+                "instruction": "%40 = call i32 (i8*, ...) @printf(i8* nonnull dereferenceable(1) getelementptr inbounds ([3 x i8], [3 x i8]* @.str.2, i64 0, i64 0))",
+                "operand_list": [
+                    "i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str.2, i64 0, i64 0)",
+                    "; Function Attrs: nofree nounwind\ndeclare dso_local i32 @printf(i8* nocapture readonly, ...) local_unnamed_addr #2"
+                ],
+                "var_name": "%40",
+                "called_function_name": "printf",
+                "called_function_return_type": "dso_local i32",
+                "called_function_arguments": [
+                    "i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str.2, i64 0, i64 0)"
+                ],
+                "opcode": "call"
+            },
+            {
+                "inst_id": 42,
+                "instruction": "br label %41",
+                "operand_list": [],
+                "var_name": null,
+                "opcode": "br"
+            },
+            {
+                "inst_id": 43,
+                "instruction": "%42 = call i32 @putchar(i32 10)",
+                "operand_list": [
+                    "i32 10",
+                    "; Function Attrs: nofree nounwind\ndeclare i32 @putchar(i32) local_unnamed_addr #4"
+                ],
+                "var_name": "%42",
+                "called_function_name": "putchar",
+                "called_function_return_type": "i32",
+                "called_function_arguments": [
+                    "i32 10"
+                ],
+                "opcode": "call"
+            },
+            {
+                "inst_id": 44,
+                "instruction": "%43 = call i32 (i8*, ...) @__isoc99_scanf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str, i64 0, i64 0), i32* nonnull %2, i32* nonnull %1)",
+                "operand_list": [
+                    "i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str, i64 0, i64 0)",
+                    "%2 = alloca i32, align 4",
+                    "%1 = alloca i32, align 4",
+                    "; Function Attrs: nofree nounwind\ndeclare dso_local i32 @__isoc99_scanf(i8* nocapture readonly, ...) local_unnamed_addr #2"
+                ],
+                "var_name": "%43",
+                "called_function_name": "__isoc99_scanf",
+                "called_function_return_type": "dso_local i32",
+                "called_function_arguments": [
+                    "i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str, i64 0, i64 0)",
+                    "%2 = alloca i32, align 4",
+                    "%1 = alloca i32, align 4"
+                ],
+                "opcode": "call"
+            },
+            {
+                "inst_id": 45,
+                "instruction": "%44 = icmp eq i32 %43, -1",
+                "operand_list": [
+                    "%43 = call i32 (i8*, ...) @__isoc99_scanf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str, i64 0, i64 0), i32* nonnull %2, i32* nonnull %1)",
+                    "i32 -1"
+                ],
+                "var_name": "%44",
+                "opcode": "icmp"
+            },
+            {
+                "inst_id": 46,
+                "instruction": "br i1 %44, label %45, label %7",
+                "operand_list": [],
+                "var_name": null,
+                "opcode": "br"
+            },
+            {
+                "inst_id": 47,
+                "instruction": "call void @llvm.lifetime.end.p0i8(i64 4, i8* nonnull %4) #5",
+                "operand_list": [
+                    "i64 4",
+                    "%4 = bitcast i32* %2 to i8*",
+                    "; Function Attrs: argmemonly nofree nosync nounwind willreturn\ndeclare void @llvm.lifetime.end.p0i8(i64 immarg, i8* nocapture) #1"
+                ],
+                "var_name": null,
+                "called_function_name": "llvm.lifetime.end.p0i8",
+                "called_function_return_type": "void",
+                "called_function_arguments": [
+                    "i64 4",
+                    "%4 = bitcast i32* %2 to i8*"
+                ],
+                "opcode": "call"
+            },
+            {
+                "inst_id": 48,
+                "instruction": "call void @llvm.lifetime.end.p0i8(i64 4, i8* nonnull %3) #5",
+                "operand_list": [
+                    "i64 4",
+                    "%3 = bitcast i32* %1 to i8*",
+                    "; Function Attrs: argmemonly nofree nosync nounwind willreturn\ndeclare void @llvm.lifetime.end.p0i8(i64 immarg, i8* nocapture) #1"
+                ],
+                "var_name": null,
+                "called_function_name": "llvm.lifetime.end.p0i8",
+                "called_function_return_type": "void",
+                "called_function_arguments": [
+                    "i64 4",
+                    "%3 = bitcast i32* %1 to i8*"
+                ],
+                "opcode": "call"
+            },
+            {
+                "inst_id": 49,
+                "instruction": "ret i32 0",
+                "operand_list": [
+                    "i32 0"
+                ],
+                "var_name": null,
+                "opcode": "ret"
+            }
+        ]
+    },
+    {
+        "function_name": "narcissus",
+        "function_var_inst_map": [
+            {
+                "inst_id": 50,
+                "instruction": "%2 = srem i32 %0, 10",
+                "operand_list": [
+                    "i32 %0",
+                    "i32 10"
+                ],
+                "var_name": "%2",
+                "opcode": "srem"
+            },
+            {
+                "inst_id": 51,
+                "instruction": "%3 = sdiv i32 %0, 10",
+                "operand_list": [
+                    "i32 %0",
+                    "i32 10"
+                ],
+                "var_name": "%3",
+                "opcode": "sdiv"
+            },
+            {
+                "inst_id": 52,
+                "instruction": "%4 = srem i32 %3, 10",
+                "operand_list": [
+                    "%3 = sdiv i32 %0, 10",
+                    "i32 10"
+                ],
+                "var_name": "%4",
+                "opcode": "srem"
+            },
+            {
+                "inst_id": 53,
+                "instruction": "%5 = sdiv i32 %0, 100",
+                "operand_list": [
+                    "i32 %0",
+                    "i32 100"
+                ],
+                "var_name": "%5",
+                "opcode": "sdiv"
+            },
+            {
+                "inst_id": 54,
+                "instruction": "%6 = mul nsw i32 %2, %2",
+                "operand_list": [
+                    "%2 = srem i32 %0, 10",
+                    "%2 = srem i32 %0, 10"
+                ],
+                "var_name": "%6",
+                "opcode": "mul"
+            },
+            {
+                "inst_id": 55,
+                "instruction": "%7 = mul nsw i32 %6, %2",
+                "operand_list": [
+                    "%6 = mul nsw i32 %2, %2",
+                    "%2 = srem i32 %0, 10"
+                ],
+                "var_name": "%7",
+                "opcode": "mul"
+            },
+            {
+                "inst_id": 56,
+                "instruction": "%8 = mul nsw i32 %4, %4",
+                "operand_list": [
+                    "%4 = srem i32 %3, 10",
+                    "%4 = srem i32 %3, 10"
+                ],
+                "var_name": "%8",
+                "opcode": "mul"
+            },
+            {
+                "inst_id": 57,
+                "instruction": "%9 = mul nsw i32 %8, %4",
+                "operand_list": [
+                    "%8 = mul nsw i32 %4, %4",
+                    "%4 = srem i32 %3, 10"
+                ],
+                "var_name": "%9",
+                "opcode": "mul"
+            },
+            {
+                "inst_id": 58,
+                "instruction": "%10 = mul nsw i32 %5, %5",
+                "operand_list": [
+                    "%5 = sdiv i32 %0, 100",
+                    "%5 = sdiv i32 %0, 100"
+                ],
+                "var_name": "%10",
+                "opcode": "mul"
+            },
+            {
+                "inst_id": 59,
+                "instruction": "%11 = mul nsw i32 %10, %5",
+                "operand_list": [
+                    "%10 = mul nsw i32 %5, %5",
+                    "%5 = sdiv i32 %0, 100"
+                ],
+                "var_name": "%11",
+                "opcode": "mul"
+            },
+            {
+                "inst_id": 60,
+                "instruction": "%12 = add i32 %11, %7",
+                "operand_list": [
+                    "%11 = mul nsw i32 %10, %5",
+                    "%7 = mul nsw i32 %6, %2"
+                ],
+                "var_name": "%12",
+                "opcode": "add"
+            },
+            {
+                "inst_id": 61,
+                "instruction": "%13 = add i32 %12, %9",
+                "operand_list": [
+                    "%12 = add i32 %11, %7",
+                    "%9 = mul nsw i32 %8, %4"
+                ],
+                "var_name": "%13",
+                "opcode": "add"
+            },
+            {
+                "inst_id": 62,
+                "instruction": "%14 = icmp eq i32 %13, %0",
+                "operand_list": [
+                    "%13 = add i32 %12, %9",
+                    "i32 %0"
+                ],
+                "var_name": "%14",
+                "opcode": "icmp"
+            },
+            {
+                "inst_id": 63,
+                "instruction": "%15 = zext i1 %14 to i32",
+                "operand_list": [
+                    "%14 = icmp eq i32 %13, %0"
+                ],
+                "var_name": "%15",
+                "opcode": "zext"
+            },
+            {
+                "inst_id": 64,
+                "instruction": "ret i32 %15",
+                "operand_list": [
+                    "%15 = zext i1 %14 to i32"
+                ],
+                "var_name": null,
+                "opcode": "ret"
+            }
+        ]
+    }
+]
