@@ -1,6 +1,12 @@
+from collections import defaultdict
 import os
 import llvmlite.ir as ir
 import llvmlite.binding as llvm
+import re
+import json
+linkages = ['external', 'internal', 'available_externally', 'private','linkonce', 'weak', 'weak_odr', 'linkonce_odr']
+visibilities = ['default', 'hidden', 'protected']
+addressing_modes = ['local_unnamed_addr','unnamed_addr']
 
 def generate_llvm_ir(input_file):
     # 从输入文件读取 LLVM IR
@@ -12,8 +18,11 @@ def generate_llvm_ir(input_file):
 
     return llvm_ir
 
+    
+
 def main():
-    ll_file = 'E:\\Desktop\\IR2SOG\\ll_files\\demo_10_o2.ll'
+    ll_file = 'E:\\Desktop\\similarity\\ll_files\\demo_10_o2.ll'
+    output_file = 'E:\\Desktop\\similarity\\ll_files\\demo_10_o2.json'
     llvm_name = os.path.basename(ll_file)
     llvm.initialize()
     llvm.initialize_native_target()
@@ -28,6 +37,8 @@ def main():
     except RuntimeError as e:
         print(f"Error parsing LLVM IR: {e}")
         exit(1)
+
+
     functions = [function.name for function in llvm_mod.functions]
     for function in llvm_mod.functions:
         function_param_list = [str(param) for param in function.arguments]

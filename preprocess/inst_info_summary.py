@@ -60,8 +60,8 @@ def main(ll_file,output_dir):
     out_file_name = ll_file_name_without_extention + "_info_summary.json"
     output_file = os.path.join(output_dir, out_file_name)
 
-    if os.path.exists(output_file):
-        return 0
+    # if os.path.exists(output_file):
+        # return 0
     
     # 初始化 LLVM
     llvm.initialize()
@@ -81,32 +81,33 @@ def main(ll_file,output_dir):
         exit(1)
     
     
-    file_var_inst_map = []
-    
+    #file_var_inst_map = defaultdict(list)    # 变量名到指令列表的映射
+    file_var_inst_map = {}
+
     inst_id = 0
+    block_id = 0
+    global_vars = [str(global_var) for global_var in llvm_mod.global_variables]
     functions = [function.name for function in llvm_mod.functions]
     pbar = tqdm(total=len(functions))
     for function in llvm_mod.functions:
-        # print(f"============================parsing function: {function.name}============================\n")
         function_param_list = [str(param) for param in function.arguments]
         print(f"Function {function.name} parameters: {function_param_list}\n")
-        var_inst_map = defaultdict(list)    # 变量名到指令列表的映射
         inst_operand_map = defaultdict(list)
-        
-        function_var_inst_map = []
-        # print(f"Function name: {function.name}")
-        # print(f"Function type: {function.type}")
+
+        # function_blocks = defaultdict(list)
+        function_blocks = {}
+
+        bb_num = 0
         
         for block in function.blocks:
+            block_info = {}
+            block_var_list = []
+            inst_num = 0
+            block_insts = []
             for instruction in block.instructions:
-                # print(f"parsing instruction: {instruction}\n")
                 isnt_info = {}
-
                 isnt_info.setdefault("inst_id", inst_id)
                 isnt_info.setdefault("instruction", str(instruction).strip())
-
-                # print(f"Instruction ID: {inst_id}")
-                # print(f"Instruction: {instruction}")
 
                 for operand in instruction.operands:
                     operand = str(operand).strip()
@@ -114,42 +115,33 @@ def main(ll_file,output_dir):
                         operand = get_function_name(operand)
                     inst_operand_map.setdefault(str(instruction), []).append(operand) if instruction.opcode not in ["br"] else None
                     isnt_info.setdefault("operand_list", inst_operand_map[str(instruction)])
-                    # print('operand:',operand)
                 
 
 
                 if "=" in str(instruction):
                     var_name = get_varname(instruction)
-                    var_inst_map.setdefault(var_name, []).append(str(instruction))
-                    
-                    
-                    # print(f"Variable name: {var_name}")
-                    # print(f"Instruction list: {var_inst_map[var_name]}")
+                    block_var_list.append(var_name)
                 else:
                     var_name = None
-                    # print(f"Variable name: None")
 
                 isnt_info.setdefault("var_name", var_name)
                 
                 if str(instruction.opcode) == "call":
                     called_function_name, callde_function_return_type, called_function_arguments  = get_called_function_info(instruction.operands, str(instruction))
-                    isnt_info.setdefault("called_function_name", called_function_name)
-                    isnt_info.setdefault("called_function_return_type", callde_function_return_type)
-                    isnt_info.setdefault("called_function_arguments", called_function_arguments)
-
-                    # print(f"Called function name: {called_function_name}")
-                    # print(f"Called function return type: {callde_function_return_type}")
-                    #print(f"Called function arguments: {called_function_arguments}")
-                # print(f"Instruction opcode: {instruction.opcode}\n")
+                    isnt_info.update({"called_function_name": called_function_name, "called_function_return_type": callde_function_return_type, "called_function_arguments": called_function_arguments})
                 isnt_info.setdefault("opcode", str(instruction.opcode))
 
-                
-                function_var_inst_map.append(isnt_info)
+                block_insts.append(isnt_info)
                 inst_id += 1
+                inst_num += 1
+            bb_num += 1
+            block_id += 1
+            [block_info.update({"inst_num": inst_num, "block_var_list": block_var_list, "block_insts": block_insts}) if block_insts else None]
 
-        if function_var_inst_map:
-            file_var_inst_map.append({"function_name": function.name, 'function_var_inst_map': function_var_inst_map})
-        
+            # function_blocks.setdefault("blocks",[]).append({f"block_{block_id}_info":block_info})
+            function_blocks.setdefault(f"block_{block_id}_info",block_info)
+        # [file_var_inst_map.setdefault(function.name, []).append({"bb_num":bb_num,"function_param_list":function_param_list,"function_blocks":function_blocks["blocks"]}) if bb_num > 0 else None]
+        [file_var_inst_map.setdefault(function.name, {"bb_num":bb_num,"function_param_list":function_param_list,"function_blocks":function_blocks}) if bb_num > 0 else None]
 
         with open(output_file, 'wb+') as f:
             json_data = json.dumps(file_var_inst_map)  # 转换为 JSON 字符串
@@ -157,9 +149,7 @@ def main(ll_file,output_dir):
         pbar.update(1)
     pbar.close()
     return 1
-    """ for var_name, inst_list in var_inst_map.items():
-        print(f"Variable name: {var_name}")
-        print(f"Instruction list: {inst_list}\n") """
+
 
 
 isDebug = True if sys.gettrace() else False

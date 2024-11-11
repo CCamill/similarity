@@ -39,6 +39,14 @@
             "program": "${workspaceFolder}\\preprocess\\gen_iscg.py",
             "console": "integratedTerminal",
             "args": []
+        },
+        {
+            "name": "get_global_info",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\preprocess\\get_global_info.py",
+            "console": "integratedTerminal",
+            "args": []
         }
     ]
 }
