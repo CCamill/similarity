@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from py2neo import Node, Relationship, Graph, NodeMatcher, RelationshipMatcher
 from py2neo.bulk import create_relationships
 
-summary_path = r'E:\Desktop\IR2SOG\summary_files'
+summary_path = r'E:\Desktop\similarity\summary_files'
 
 def main():
     test_graph = Graph('bolt://localhost:7687',auth=('neo4j','chang8677'),name='neo4j')
@@ -23,28 +23,39 @@ def main():
             summary_data = json.load(f)
         instructions = []
         inst_instID_dict = dict()
+        inst_instOp_dict = dict()
         for function in summary_data:
-            for inst_info in function['function_var_inst_map']:
-                instructions.append(inst_info['instruction'])
-                inst_instID_dict[inst_info['instruction']] = inst_info['inst_id']
 
-                inst_info = Node(function['function_name'],inst_id = inst_info['inst_id'], instruction=inst_info['instruction'], opcode=inst_info['opcode'])
-                test_graph.create(inst_info)
+            for block_info in function['function_blocks']:
+                for inst_info in block_info['block_insts']:
+                    instructions.append(inst_info['instruction'])
 
-                G.add_node(inst_info['inst_id'], instruction=inst_info['instruction'], opcode=inst_info['opcode'])
+                    # 指令到指令ID的映射
+                    inst_instID_dict[inst_info['instruction']] = inst_info['inst_id']
+                    # 指令到指令操作码的映射
+                    inst_instOp_dict[inst_info['instruction']] = inst_info['opcode']
+
+                    # neo4j 图数据库中创建指令节点
+                    inst_node = Node(function['function_name'],inst_id = inst_info['inst_id'], instruction=inst_info['instruction'], opcode=inst_info['opcode'])
+                    test_graph.create(inst_node)
+
+                    # nx 图数据库中创建指令节点
+                    G.add_node(inst_info['inst_id'], instruction=inst_info['instruction'], opcode=inst_info['opcode'])
+        # 建立指令之间的数据流
         for function in summary_data:
-            for inst_info in function['function_var_inst_map']:
-                try:
-                    if inst_info['opcode'] not in ('ret','unreachable'):
-                        operand_list = inst_info['operand_list']
-                        [G.add_edge(inst_instID_dict[inst_info['instruction']], inst_instID_dict[operand]) for operand in operand_list if operand in instructions]
-                except:
-                    print('Error in processing instruction: ', inst_info)
+            for block_info in function['function_blocks']:
+                for inst_info in block_info['block_insts']:
+                    if inst_info['opcode'] == 'br':
+                        pass
+                    try:
+                        if inst_info['opcode'] not in ('ret','unreachable'):
+                            operand_list = inst_info['operand_list']
+                            [G.add_edge(inst_instID_dict[inst_info['instruction']], inst_instID_dict[operand]) for operand in operand_list if operand in instructions]
+                    except:
+                        print('Error in processing instruction: ', inst_info)
         for function in summary_data:
             for edge in G.edges(data=True):
                 label = function['function_name']
-                # source_node = NodeMatcher(test_graph).match(function['function_name'],inst_id=edge[0]).first()
-                # target_node = NodeMatcher(test_graph).match(function['function_name'],inst_id=edge[1]).first()
                 rel_str = f'MATCH (source:{label}{{inst_id:{edge[0]}}}) MATCH (target:{label}{{inst_id:{edge[1]}}}) CREATE (source)-[r:data_flow]->(target)'
                 test_graph.run(rel_str)
 

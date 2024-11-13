@@ -1,5 +1,6 @@
 import argparse
 import os
+import re
 import llvmlite.ir as ir
 import llvmlite.binding as llvm
 import json
@@ -44,12 +45,12 @@ def get_called_function_info(operands,instruction):
         function_name = function_attrs[function_name_start_index:function_name_end_index].strip()
     except:
         function_attrs = instruction[instruction.index('call') + 4:instruction.index('(')].strip()
-        print("function_attrs:",function_attrs)
+        # print("function_attrs:",function_attrs)
         return_type = function_attrs.split(' ')[0]
         function_name = function_attrs.split(' ')[1]
 
     # ; Function Attrs: argmemonly nofree nosync nounwind willreturn\ndeclare return_type @function_name(i64 immarg, i8* nocapture) #1\n
-    parameters = [operand.strip() for operand in operand_list if 'Function Attrs' not in operand]
+    parameters = [operand.strip() for operand in operand_list if  not function_name in operand]
     
     return function_name, return_type, parameters
 
@@ -81,29 +82,36 @@ def main(ll_file,output_dir):
         exit(1)
     
     
-    #file_var_inst_map = defaultdict(list)    # 变量名到指令列表的映射
-    file_var_inst_map = {}
+    # 变量名到指令列表的映射
+    file_var_inst_map = []
 
     inst_id = 0
-    block_id = 0
-    global_vars = [str(global_var) for global_var in llvm_mod.global_variables]
+    
     functions = [function.name for function in llvm_mod.functions]
     pbar = tqdm(total=len(functions))
     for function in llvm_mod.functions:
+        # 函数参数列表
         function_param_list = [str(param) for param in function.arguments]
-        print(f"Function {function.name} parameters: {function_param_list}\n")
+
         inst_operand_map = defaultdict(list)
 
-        # function_blocks = defaultdict(list)
-        function_blocks = {}
+        function_blocks = []
 
         bb_num = 0
         
         for block in function.blocks:
+            try:
+                block_label = str(block)[1:str(block).index(':')]
+            except:
+                if bb_num == 0:
+                    block_label = 0
+                else:
+                    block_label = str(block)[1:str(block).index(':')]
             block_info = {}
             block_var_list = []
             inst_num = 0
             block_insts = []
+            insts_opcode = {str(inst):str(inst.opcode) for inst in block.instructions}
             for instruction in block.instructions:
                 isnt_info = {}
                 isnt_info.setdefault("inst_id", inst_id)
@@ -111,7 +119,8 @@ def main(ll_file,output_dir):
 
                 for operand in instruction.operands:
                     operand = str(operand).strip()
-                    if 'Function Attrs' in operand:
+                    if 'Function Attrs' in operand or 'define' in operand:
+                        # print("function_attrs:",operand)
                         operand = get_function_name(operand)
                     inst_operand_map.setdefault(str(instruction), []).append(operand) if instruction.opcode not in ["br"] else None
                     isnt_info.setdefault("operand_list", inst_operand_map[str(instruction)])
@@ -129,19 +138,41 @@ def main(ll_file,output_dir):
                 if str(instruction.opcode) == "call":
                     called_function_name, callde_function_return_type, called_function_arguments  = get_called_function_info(instruction.operands, str(instruction))
                     isnt_info.update({"called_function_name": called_function_name, "called_function_return_type": callde_function_return_type, "called_function_arguments": called_function_arguments})
+                
+                if str(instruction.opcode) == "br":
+                    for operand in instruction.operands:
+                        if str(operand) in insts_opcode.keys() and insts_opcode[str(operand)] in ['icmp', 'fcmp']:
+                            # print('condition instruction:',str(operand))
+                            isnt_info.update({"branch_condition": str(operand).strip()})
+                            # print('condition br instruction:',str(instruction))
+                            labels = re.findall(r'label (%[\w.]+)', str(instruction))
+                            # print('labels:',labels)
+                            # print('\n')
+                            isnt_info.update({"true_target": labels[0]})
+                            isnt_info.update({"false_target": labels[1]})
+                            break
+                        else:
+                            # print('not condition instruction:',str(instruction))
+                            labels = re.findall(r'label (%[\w.]+)', str(instruction))
+                            # print('labels:',labels)
+                            # print('\n')
+                            isnt_info.update({"branch_condition": 'False'})
+                            isnt_info.update({"br_target": labels[0]})
+                if str(instruction.opcode) == "ret":
+                    pass 
+                
                 isnt_info.setdefault("opcode", str(instruction.opcode))
 
                 block_insts.append(isnt_info)
                 inst_id += 1
                 inst_num += 1
             bb_num += 1
-            block_id += 1
-            [block_info.update({"inst_num": inst_num, "block_var_list": block_var_list, "block_insts": block_insts}) if block_insts else None]
+            
+            [block_info.update({"block_name":block_label,"inst_num": inst_num, "block_var_list": block_var_list, "block_insts": block_insts}) if block_insts else None]
 
-            # function_blocks.setdefault("blocks",[]).append({f"block_{block_id}_info":block_info})
-            function_blocks.setdefault(f"block_{block_id}_info",block_info)
-        # [file_var_inst_map.setdefault(function.name, []).append({"bb_num":bb_num,"function_param_list":function_param_list,"function_blocks":function_blocks["blocks"]}) if bb_num > 0 else None]
-        [file_var_inst_map.setdefault(function.name, {"bb_num":bb_num,"function_param_list":function_param_list,"function_blocks":function_blocks}) if bb_num > 0 else None]
+            function_blocks.append(block_info)
+        
+        [file_var_inst_map.append({"function_name":function.name,"bb_num":bb_num,"function_param_list":function_param_list,"function_blocks":function_blocks}) if bb_num > 0 else None]
 
         with open(output_file, 'wb+') as f:
             json_data = json.dumps(file_var_inst_map)  # 转换为 JSON 字符串
@@ -178,5 +209,3 @@ if __name__ == "__main__":
             print(f"{input_file} already exists")
         print(f"Number of unprocessed files: {input_files_num}")
         #pbar.update(1)
-
-    #pbar.close()

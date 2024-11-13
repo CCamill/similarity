@@ -16,7 +16,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}\\preprocess\\inst_info_summary.py",
-            "console": "externalTerminal",
+            "console": "integratedTerminal",
             "args": [
                 "--input_dir",
                 "${workspaceFolder}\\ll_files",
@@ -29,7 +29,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}\\preprocess\\binary_lifting.py",
-            "console": "externalTerminal",
+            "console": "integratedTerminal",
             "args": []
         },
         {

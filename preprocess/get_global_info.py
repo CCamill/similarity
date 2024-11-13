@@ -4,10 +4,9 @@ import llvmlite.ir as ir
 import llvmlite.binding as llvm
 import re
 import json
-linkages = ['external', 'internal', 'available_externally', 'private','linkonce', 'weak', 'weak_odr', 'linkonce_odr']
-visibilities = ['default', 'hidden', 'protected']
-addressing_modes = ['local_unnamed_addr','unnamed_addr']
-var_list = []
+import argparse
+
+
 def generate_llvm_ir(input_file):
     # 从输入文件读取 LLVM IR
     with open(input_file, 'r') as f:
@@ -19,6 +18,9 @@ def generate_llvm_ir(input_file):
     return llvm_ir
 
 def get_global_var_info(global_var):
+    linkages = ['external', 'internal', 'available_externally', 'private','linkonce', 'weak', 'weak_odr', 'linkonce_odr']
+    visibilities = ['default', 'hidden', 'protected']
+    addressing_modes = ['local_unnamed_addr','unnamed_addr']
     # 获取全局变量的信息
     info = {}
     info.setdefault('define',global_var)
@@ -119,14 +121,12 @@ def get_global_var_info(global_var):
     
     return info
 
-def main():
-    ll_file = 'E:\\Desktop\\similarity\\ll_files\\arm32-clang-5.0-O0_curl.ll'
-    output_file = 'E:\\Desktop\\similarity\\ll_files\\arm32-clang-5.0-O0_curl.json'
-    llvm_name = os.path.basename(ll_file)
+def main(input_file, output_file):
+    llvm_name = os.path.basename(input_file)
     llvm.initialize()
     llvm.initialize_native_target()
     llvm.initialize_native_asmprinter()
-    llvm_ir = generate_llvm_ir(ll_file)
+    llvm_ir = generate_llvm_ir(input_file)
 
     # 解析 LLVM IR
     try:
@@ -148,5 +148,19 @@ def main():
             json_data = json.dumps(global_var_info_list)  # 转换为 JSON 字符串
             f.write(json_data.encode('utf-8'))  # 将字符串编码为字节并写入文件
 
+var_list = []
+
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_dir', help='Input LLVM IR dir', default=r'E:\\Desktop\similarity\\ll_files')
+    parser.add_argument('output_dir', help='Output JSON dir', default=r'E:\\Desktop\similarity\\global_info')
+    args = parser.parse_args()
+    input_dir = args.input_dir
+    output_dir = args.output_dir
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    for file in os.listdir(input_dir):
+        if file.endswith('.ll'):
+            input_file = os.path.join(input_dir, file)
+            output_file = os.path.join(output_dir, file.replace('.ll', '_global_info.json'))
+            main(input_file,input_file)
