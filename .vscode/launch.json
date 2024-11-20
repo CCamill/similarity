@@ -47,6 +47,14 @@
             "program": "${workspaceFolder}\\preprocess\\get_global_info.py",
             "console": "integratedTerminal",
             "args": []
+        },
+        {
+            "name": "DFS",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\preprocess\\DFS.py",
+            "console": "integratedTerminal",
+            "args": []
         }
     ]
 }

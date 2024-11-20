@@ -30,8 +30,6 @@ def get_function_name(operand):
 
 def get_called_function_info(operands,instruction):
     operand_list = list(map(str, operands))
-    # for operand in operand_list:
-        #print("operand:",operand)
     try:
         function_attrs = [operand for operand in operand_list if 'Function Attrs' in operand or ('declare' and '@') in operand].pop()
         if 'declare' in function_attrs:
@@ -45,13 +43,11 @@ def get_called_function_info(operands,instruction):
         function_name = function_attrs[function_name_start_index:function_name_end_index].strip()
     except:
         function_attrs = instruction[instruction.index('call') + 4:instruction.index('(')].strip()
-        # print("function_attrs:",function_attrs)
         return_type = function_attrs.split(' ')[0]
         function_name = function_attrs.split(' ')[1]
 
-    # ; Function Attrs: argmemonly nofree nosync nounwind willreturn\ndeclare return_type @function_name(i64 immarg, i8* nocapture) #1\n
     parameters = [operand.strip() for operand in operand_list if  not function_name in operand]
-    
+
     return function_name, return_type, parameters
 
 
@@ -104,7 +100,7 @@ def main(ll_file,output_dir):
                 block_label = str(block)[1:str(block).index(':')]
             except:
                 if bb_num == 0:
-                    block_label = 0
+                    block_label = str(0)
                 else:
                     block_label = str(block)[1:str(block).index(':')]
             block_info = {}
@@ -113,9 +109,19 @@ def main(ll_file,output_dir):
             block_insts = []
             insts_opcode = {str(inst):str(inst.opcode) for inst in block.instructions}
             for instruction in block.instructions:
+
                 isnt_info = {}
-                isnt_info.setdefault("inst_id", inst_id)
+                isnt_info.setdefault("inst_id", str(inst_id))
                 isnt_info.setdefault("instruction", str(instruction).strip())
+                operands = [str(operand).strip() for operand in instruction.operands]
+                
+                # get variable name
+                if "=" in str(instruction):
+                    var_name = get_varname(instruction)
+                    block_var_list.append(var_name)
+                else:
+                    var_name = None
+                isnt_info.setdefault("var_name", var_name)
 
                 for operand in instruction.operands:
                     operand = str(operand).strip()
@@ -125,39 +131,30 @@ def main(ll_file,output_dir):
                     inst_operand_map.setdefault(str(instruction), []).append(operand) if instruction.opcode not in ["br"] else None
                     isnt_info.setdefault("operand_list", inst_operand_map[str(instruction)])
                 
-
-
-                if "=" in str(instruction):
-                    var_name = get_varname(instruction)
-                    block_var_list.append(var_name)
-                else:
-                    var_name = None
-
-                isnt_info.setdefault("var_name", var_name)
-                
                 if str(instruction.opcode) == "call":
                     called_function_name, callde_function_return_type, called_function_arguments  = get_called_function_info(instruction.operands, str(instruction))
                     isnt_info.update({"called_function_name": called_function_name, "called_function_return_type": callde_function_return_type, "called_function_arguments": called_function_arguments})
                 
                 if str(instruction.opcode) == "br":
+                    del isnt_info["operand_list"]
                     for operand in instruction.operands:
                         if str(operand) in insts_opcode.keys() and insts_opcode[str(operand)] in ['icmp', 'fcmp']:
-                            # print('condition instruction:',str(operand))
                             isnt_info.update({"branch_condition": str(operand).strip()})
-                            # print('condition br instruction:',str(instruction))
                             labels = re.findall(r'label (%[\w.]+)', str(instruction))
-                            # print('labels:',labels)
-                            # print('\n')
                             isnt_info.update({"true_target": labels[0]})
                             isnt_info.update({"false_target": labels[1]})
-                            break
                         else:
-                            # print('not condition instruction:',str(instruction))
                             labels = re.findall(r'label (%[\w.]+)', str(instruction))
-                            # print('labels:',labels)
-                            # print('\n')
                             isnt_info.update({"branch_condition": 'False'})
                             isnt_info.update({"br_target": labels[0]})
+                    
+            
+                if str(instruction.opcode) == "switch":
+                    del isnt_info["operand_list"]
+                    labels = re.findall(r'label (%[\w.]+)', str(instruction))
+                    contition = operands[0]
+                    isnt_info.update({"switch_condition": contition})
+                    isnt_info.update({"case_targets": labels})
                 if str(instruction.opcode) == "ret":
                     pass 
                 
@@ -168,7 +165,7 @@ def main(ll_file,output_dir):
                 inst_num += 1
             bb_num += 1
             
-            [block_info.update({"block_name":block_label,"inst_num": inst_num, "block_var_list": block_var_list, "block_insts": block_insts}) if block_insts else None]
+            [block_info.update({"block_name":'block-' + block_label,"inst_num": inst_num, "block_var_list": block_var_list, "block_insts": block_insts}) if block_insts else None]
 
             function_blocks.append(block_info)
         

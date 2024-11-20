@@ -59,10 +59,9 @@ def get_global_var_info(global_var):
     string_matcher = r'((constant|global|internal) \[[\d]+ x i[\d]+\] c)'          #[25 x i8]
     string_match = re.search(string_matcher, global_var)
     if string_match:
-        info.setdefault('type_filed', 'string')
-
+        info.setdefault('type_field', 'string')
         string_len = string_match.group(0)
-        info.setdefault('string_len', string_len)
+        info.setdefault('value_size', string_len)
         string_start_idx = global_var.index('c"')+2
         string_end_idx = global_var.find('00"')+2
         global_value = global_var[string_start_idx:string_end_idx]
@@ -71,12 +70,12 @@ def get_global_var_info(global_var):
         return info
 
     # 整型
-    int_matcher = r'(constant|global|internal) i(1|8|16|32|64|128)\s+(\d+|-\d+)'
+    int_matcher = r'(constant|global|internal) i(1|8|16|32|64|128)\s+(\d*|-\d*)'
     int_match = re.search(int_matcher, global_var)
     if int_match:
-        info.setdefault('type_filed', 'int')
+        info.setdefault('type_field', 'int')
         int_size = int_match.group(2)
-        info.setdefault('int_size', int_size)
+        info.setdefault('value_size', int_size)
         if info['linkage'] == 'external':
             info.setdefault('global_value', None)
         else:
@@ -90,6 +89,7 @@ def get_global_var_info(global_var):
         info.setdefault('type_field', 'float')
         float_value = float_match.group(1)
         info.setdefault('global_value', float_value)
+        info.setdefault('value_size', "32")
     
     # double
     double_matcher = r'double\s+((0x[0-9a-fA-F]+(\.[0-9a-fA-F]+)?([pP][+-]?\d+)?)|([-+]?\d*\.\d+|\d+)([eE][-+]?\d+)?)'
@@ -98,6 +98,7 @@ def get_global_var_info(global_var):
         info.setdefault('type_field', 'double')
         double_value = double_match.group(1)
         info.setdefault('global_value', double_value)
+        info.setdefault('value_size', "64")
     
     # 指针数组
     string_ptr_matcher = r'(((constant|global|internal) \[[\d]+ x i[\d]+\*\] ))'    #[25 x i8*]
@@ -109,6 +110,7 @@ def get_global_var_info(global_var):
             if var in global_var:
                 ptr_array.append(var)
         info.setdefault('ptr_array', ptr_array)
+        info.setdefault('global_value', None)
     
     # 数组指针
     array_ptr = r"((constant|global|internal) \[[\d]+ x i[\d]+\]\* \@)"
@@ -118,10 +120,14 @@ def get_global_var_info(global_var):
         for var in var_list:
             if var in global_var:
                 info.setdefault('array_ptr', var)
+        info.setdefault('global_value', None)
+    
+    if 'type_field' not in info.keys():
+        info.setdefault('type_field', 'unknown')
     
     return info
 
-def main(input_file, output_file):
+def extract_global_info(input_file, output_file):
     llvm_name = os.path.basename(input_file)
     llvm.initialize()
     llvm.initialize_native_target()
@@ -140,20 +146,18 @@ def main(input_file, output_file):
     global_var_info_list = defaultdict(list)
     id = 0
     for global_var in global_vars:
-        global_info = get_global_var_info(global_var)
+        global_info = get_global_var_info(global_var+" ")
         global_info.setdefault('id', id)
         id += 1
-        global_var_info_list.setdefault(global_var,[]).append(global_info)
+        global_var_info_list.setdefault(global_info['var_name'],global_info)
     with open(output_file, 'wb+') as f:
             json_data = json.dumps(global_var_info_list)  # 转换为 JSON 字符串
             f.write(json_data.encode('utf-8'))  # 将字符串编码为字节并写入文件
 
-var_list = []
-
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('input_dir', help='Input LLVM IR dir', default=r'E:\\Desktop\similarity\\ll_files')
-    parser.add_argument('output_dir', help='Output JSON dir', default=r'E:\\Desktop\similarity\\global_info')
+    parser.add_argument('--input_dir', help='Input LLVM IR dir', default=r'E:\\Desktop\similarity\\ll_files')
+    parser.add_argument('--output_dir', help='Output JSON dir', default=r'E:\\Desktop\similarity\\global_info')
     args = parser.parse_args()
     input_dir = args.input_dir
     output_dir = args.output_dir
@@ -163,4 +167,8 @@ if __name__ == '__main__':
         if file.endswith('.ll'):
             input_file = os.path.join(input_dir, file)
             output_file = os.path.join(output_dir, file.replace('.ll', '_global_info.json'))
-            main(input_file,input_file)
+            extract_global_info(input_file,output_file)
+
+var_list = []
+if __name__ == '__main__':
+    main()
