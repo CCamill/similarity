@@ -10,7 +10,7 @@ iscg_dir = r'E:\\Desktop\\similarity\\iscg'
 summary_path = r'E:\Desktop\similarity\summary_files'    
 global_infos_dir = r"E:\\Desktop\\similarity\\global_info"
 
-""" def creat_neo4j_graph(G,remove_redundant_edges,function_name):
+def creat_neo4j_graph(G,remove_redundant_edges,function_name):
     nodes_infos = [node for node in G.nodes(data=True)]
     for node in nodes_infos:
         node = Node(function_name, node_id=node[0], **node[1])
@@ -24,7 +24,7 @@ global_infos_dir = r"E:\\Desktop\\similarity\\global_info"
             rel_str = f'MATCH (source:{label}{{node_id:"{source_node}"}}) MATCH (target:{label}{{node_id:"{target_node}"}}) CREATE (source)-[r:{edge_type}]->(target)'
             test_graph.run(rel_str)
         except Exception as e:
-            print(e) """
+            print(e)
 
 def load_json_file(file_path):
     with open(file_path, 'r') as f:
@@ -205,49 +205,7 @@ def main():
                                 # G.add_edge(function_name, inst_id, edge_type='Parameter')
                             if operand in instructions:
                                 G.add_edge(inst_instID_dict[operand], inst_id, edge_type='Data')
-                                
-                        
-            
-            """ # 创建不同基本块之间的指令流关系
-            for block_info in function['function_blocks']:
-                for index,inst_info in enumerate(block_info['block_insts']):
-                    if inst_info['opcode'] == 'br':
-                        # 如果该跳转指令是无条件跳转指令
-                        if inst_info['branch_condition'] == 'False':
-                            br_target = 'block-' + inst_info['br_target'].replace('%', '')
-                            G.add_edge(inst_id, br_target, edge_type='Control')
-                        # 如果该跳转指令是条件跳转指令
-                        else:
-                            true_target = 'block-' + inst_info['true_target'].replace('%', '')
-                            false_target = 'block-' + inst_info['false_target'].replace('%', '')
-                            G.add_edge(inst_id, true_target, edge_type='Control')
-                            G.add_edge(inst_id, false_target, edge_type='Control')
-                    elif inst_info['opcode'] =='switch':
-                        for index,target in enumerate(inst_info['case_targets']):
-                            case_target = 'block-' + target.replace('%', '')
-                            G.add_edge(inst_id, case_target, edge_type='Control')
-                    elif inst_info['opcode'] in ['unreachable']:
-                        continue
-                    else:
-                        for operand in inst_info['operand_list']:
-                            if operand in instructions and operand not in block_instructions:
-                                G.add_edge(inst_instID_dict[operand], inst_id, edge_type='Data')
-                            if operand in function_params:
-                                G.add_edge(function_name, inst_id, edge_type='Parameter')
-                            if '@' in operand:
-                                globals = [g for g in operand.split(' ') if g.startswith('@')]
-                                if inst_info['opcode'] in ['call']:
-                                    globals = [g for g in globals if inst_info['called_function_name'] not in g]
-                                for global_var in globals:
-                                    if global_var in global_var_list:
-                                        if global_infos[global_var]['type_field'] not in ['array_ptr', 'ptr_array','unknown']:
-                                            attr_dict = global_infos[global_var]
-                                            attr_dict['is_global'] = True
-                                            G.add_node(global_var, **attr_dict)
-                                            # global_node = Node(function['function_name'], node_id=global_var, **attr_dict)
-                                            # test_graph.create(global_node)
-                                            G.add_edge(global_var, inst_id, edge_type='Global') """
-            
+                            
             list_edges = [(edge[0], edge[1], edge[2]['edge_type']) for edge in G.edges(data=True)]
             remove_redundant_edges = list(dict.fromkeys(list_edges))
             # creat_neo4j_graph(G,remove_redundant_edges,function_name)
