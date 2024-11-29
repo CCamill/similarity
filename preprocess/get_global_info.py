@@ -6,7 +6,6 @@ import re
 import json
 import argparse
 
-
 def generate_llvm_ir(input_file):
     # 从输入文件读取 LLVM IR
     with open(input_file, 'r') as f:
@@ -17,43 +16,47 @@ def generate_llvm_ir(input_file):
 
     return llvm_ir
 
-def get_global_var_info(global_var):
-    linkages = ['external', 'internal', 'available_externally', 'private','linkonce', 'weak', 'weak_odr', 'linkonce_odr']
-    visibilities = ['default', 'hidden', 'protected']
-    addressing_modes = ['local_unnamed_addr','unnamed_addr']
-    # 获取全局变量的信息
-    info = {}
-    info.setdefault('define',global_var)
-    linkage_flag = False
-    for linkage in linkages:
-        if linkage in global_var:
-            info.setdefault('linkage', linkage)
-            linkage_flag = True
-    if not linkage_flag:
-        info.setdefault('linkage', None)
-    
-    visibility_flag = False
-    for visibility in visibilities:
-        if visibility in global_var:
-            info.setdefault('visibility', visibility)
-            visibility_flag = True
-    if not visibility_flag:
-        info.setdefault('visibility', None)
-    
-    addressing_mode_flag = False
-    for addressing_mode in addressing_modes:
-        if addressing_mode in global_var:
-            info.setdefault('addressing_mode', addressing_mode)
-            addressing_mode_flag = True
-    if not addressing_mode_flag:
-        info.setdefault('addressing_mode', None)
-    
-
+def get_global_var_name(global_var):
     var_start_idx = global_var.index('@')
     var_end_idx = global_var.index('=')
     var_name = global_var[var_start_idx:var_end_idx].strip()
+    return var_name
+
+def get_global_compile_info(global_var):
+    linkages = ['external', 'internal', 'available_externally', 'private','linkonce', 'weak', 'weak_odr', 'linkonce_odr']
+    visibilities = ['default', 'hidden', 'protected']
+    addressing_modes = ['local_unnamed_addr','unnamed_addr']
+    global_var_tokens = global_var.split(" ")
+
+    linkage = list(set(linkages) & set(global_var_tokens))
+    visibility = list(set(visibilities) & set(global_var_tokens))
+    addressing_mode = list(set(addressing_modes) & set(global_var_tokens))
+    is_constant = True if 'constant' in global_var_tokens else False
+
+    return {'linkage': linkage[0] if linkage else None, 'visibility': visibility[0] if visibility else None, 'addressing_mode': addressing_mode[0] if addressing_mode else None,'is_constant':is_constant}
+
+""" def get_global_var_info(global_var):
+    # 获取全局变量的信息
+    info = {}
+    info.setdefault('define',global_var)
+
+    info.update(get_global_compile_info(global_var))
+
+
+    var_name = get_global_var_name(global_var)
     info.setdefault('var_name', var_name)
     var_list.append(var_name)
+
+    # 整形数组
+    int_array_matcher = r'(\[\d+ x i\d+\]) \[(.*)\]'
+    int_array_match = re.search(int_array_matcher, global_var)
+    if int_array_match:
+        info.setdefault('type_field', 'int_array')
+        int_array_len = int_array_match.group(1)
+        info.setdefault('value_size', int_array_len)
+        int_array_value = int_array_match.group(2)
+        info.setdefault('global_value', int_array_value)
+        return info
 
     # 字符串
     string_matcher = r'((constant|global|internal) \[[\d]+ x i[\d]+\] c)'          #[25 x i8]
@@ -125,6 +128,64 @@ def get_global_var_info(global_var):
     if 'type_field' not in info.keys():
         info.setdefault('type_field', 'unknown')
     
+    info.update(parse_global_var(global_var, var_list))
+
+    return info """
+
+def set_info(info, key, value):
+    info.setdefault(key, value)
+
+def parse_int(info, match):
+    set_info(info, 'type_field', 'int')
+    int_size = match.group(2)
+    set_info(info, 'value_size', int_size)
+    global_value = match.group(3)
+    set_info(info, 'global_value', global_value if info.get('linkage') != 'external' else None)
+
+def parse_floating_point(info, match, size):
+    set_info(info, 'type_field', 'float' if size == 32 else 'double')
+    set_info(info, 'global_value', match.group(1))
+    set_info(info, 'value_size', str(size))
+
+def parse_global_var(global_var):
+    info = {'define': global_var}
+    var_name = get_global_var_name(global_var) 
+    set_info(info, 'var_name', var_name)
+    var_list.append(var_name) 
+
+    patterns = {
+        r'(\[\d+ x i\d+\]) \[(.*)\]': lambda match: (
+            set_info(info, 'type_field', 'int_array'),
+            set_info(info, 'value_size', match.group(1)),
+            set_info(info, 'global_value', match.group(2))
+        ),
+        r'((constant|global|internal) \[[\d]+ x i[\d]+\] c)': lambda match: (
+            set_info(info, 'type_field', 'string'),
+            set_info(info, 'value_size', match.group(0)),
+            set_info(info, 'global_value', global_var[global_var.index('c"')+2:global_var.find('00"')+2])
+        ),
+        r'(constant|global|internal) i(1|8|16|32|64|128)\s+(\d*|-\d*)': lambda match: parse_int(info, match),
+        r'float\s+((0x[0-9a-fA-F]+(\.[0-9a-fA-F]+)?([pP][+-]?\d+)?)|([-+]?\d*\.\d+|\d+)([eE][-+]?\d+)?)': lambda match: parse_floating_point(info, match, 32),
+        r'double\s+((0x[0-9a-fA-F]+(\.[0-9a-fA-F]+)?([pP][+-]?\d+)?)|([-+]?\d*\.\d+|\d+)([eE][-+]?\d+)?)': lambda match: parse_floating_point(info, match, 64),
+        r'((constant|global|internal) \[[\d]+ x i[\d]+\*\] )': lambda match: (
+            set_info(info, 'type_field', 'ptr_array'),
+            set_info(info, 'ptr_array', [var for var in var_list if var in global_var]),
+            set_info(info, 'global_value', None)
+        ),
+        r"((constant|global|internal) \[[\d]+ x i[\d]+\]\* \@)": lambda match: (
+            set_info(info, 'type_field', 'array_ptr'),
+            set_info(info, 'array_ptr', [var for var in var_list if var in global_var]),
+            set_info(info, 'global_value', None)
+        ),
+    }
+
+    for pattern, handler in patterns.items():
+        match = re.search(pattern, global_var)
+        if match:
+            handler(match)
+            return info
+
+    set_info(info, 'type_field', 'unknown')
     return info
 
 def extract_global_info(input_file, output_file):
@@ -146,7 +207,7 @@ def extract_global_info(input_file, output_file):
     global_var_info_list = defaultdict(list)
     id = 0
     for global_var in global_vars:
-        global_info = get_global_var_info(global_var+" ")
+        global_info = parse_global_var(global_var+" ")
         global_info.setdefault('id', id)
         id += 1
         global_var_info_list.setdefault(global_info['var_name'],global_info)
