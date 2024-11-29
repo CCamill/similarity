@@ -2,7 +2,7 @@ import os
 import openai
 import time 
 # 加载API密钥
-
+openai.api_key = "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"
 
 def get_global_var_info(global_vars):
     messages = [
