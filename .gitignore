@@ -1,6 +1,5 @@
-/ll_files
-/RetDec-v5
-/datasets
-/global_info
-/summary_files
-/test
+datasets
+ir_files
+global_info
+RetDec-v5
+test
