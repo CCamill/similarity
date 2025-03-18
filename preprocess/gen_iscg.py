@@ -5,10 +5,12 @@ from tqdm import tqdm
 from py2neo import Node, Graph
 from collections import defaultdict
 import re
-iscg_dir = r'E:\\Desktop\\similarity\\iscg'
-# test_graph = Graph('bolt://localhost:7687',auth=('neo4j','chang8677'),name='neo4j')
-summary_path = r'E:\Desktop\similarity\summary_files'    
-global_infos_dir = r"E:\\Desktop\\similarity\\global_info"
+# from settings import *
+
+iscg_dir = r'E:\\Desktop\\similarity\\datasets\\iscg'
+test_graph = Graph('neo4j://localhost:7687',auth=('neo4j','chang8677'),name='neo4j')
+summary_root = r'/home/lab314/cjw/similarity/datasets/source/summary'    
+global_infos_dir = r"E:\\Desktop\\similarity\\datasets\\global_info"
 
 def creat_neo4j_graph(G,remove_redundant_edges,function_name):
     nodes_infos = [node for node in G.nodes(data=True)]
@@ -74,25 +76,36 @@ def dfs_tree_edges(G, block_info):
 
     return leaves_with_depth
 
-def main():
-    # 先为每个基本快生成一个子图，然后遍历每个基本块中的指令，建立基本块之间的指令流关系和控制流关系
-    # 每一个基本快都有一个起始节点和一个终止节点，起始节点的属性包括基本块名称、基本块所包含的指令数量等，终止节点为该基本块的br指令或者ret指令。
-    # 指令节点的属性包括指令ID、指令内容、指令操作码、基本快名称、指令定义的变量、指令中的常量或者符号等
-    # 若该指令为基本块的入口指令，则将该指令与起始节点之间建立顺序流关系
-    # 指令流关系的属性包括数据流方向、数据流类型、数据流大小等
-    # 控制流关系的属性包括控制流方向、控制流类型等
-    # 若该指令与该基本块中的任何指令之间都不存在数据流关系，则将该指令与起始节点之间建立顺序流关系
-    # br分支指令与其他基本块的起始节点相连接
+def process_proj(proj_root):
+    '''
+    先为每个基本快生成一个子图，然后遍历每个基本块中的指令，建立基本块之间的指令流关系和控制流关系
+    每一个基本快都有一个起始节点和一个终止节点，起始节点的属性包括基本块名称、基本块所包含的指令数量等，终止节点为该基本块的br指令或者ret指令。
+    指令节点的属性包括指令ID、指令内容、指令操作码、基本快名称、指令定义的变量、指令中的常量或者符号等
+    若该指令为基本块的入口指令，则将该指令与起始节点之间建立顺序流关系
+    指令流关系的属性包括数据流方向、数据流类型、数据流大小等
+    控制流关系的属性包括控制流方向、控制流类型等
+    若该指令与该基本块中的任何指令之间都不存在数据流关系，则将该指令与起始节点之间建立顺序流关系
+    br分支指令与其他基本块的起始节点相连接
+    '''
     
     summary_file_paths = []
-    for file in os.listdir(summary_path):
-        summary_file_paths.append(os.path.join(summary_path, file))
+    for root, dirs, files in os.walk(proj_root):
+        for file in files:
+            file_ext = os.path.splitext(file)[1].lower()
+            full_path = os.path.join(root, file)
+
+            if file.endswith('.json'):
+                summary_file_paths.append(full_path)
 
     for summary_file_path in summary_file_paths:
         # 路径拼接
-        ori_file_name = os.path.basename(summary_file_path)[0:os.path.basename(summary_file_path).index('_info_summary.json')]
-        global_info_path = os.path.join(global_infos_dir, ori_file_name + '_global_info.json')
-        iscg_path = os.path.join(iscg_dir, ori_file_name + '_iscg.json')
+        dir_path, file_name = os.path.split(summary_file_path)
+        global_info_opti_dir = dir_path.replace('norm_summary', 'global_info')
+        global_info_path = os.path.join(global_info_opti_dir, file_name.replace('_info_summary_normalized.json', '_global_info.json'))
+        iscg_opti_dir = dir_path.replace('norm_summary', 'iscg')
+        if not os.path.exists(iscg_opti_dir):
+            os.makedirs(iscg_opti_dir)
+        iscg_path = os.path.join(iscg_opti_dir, file_name.replace('_info_summary_normalized.json', '_iscg.json'))
 
         # 若iscg文件已存在，则跳过该文件
         if os.path.exists(iscg_path):
@@ -105,13 +118,14 @@ def main():
         
         iscg_json = dict()
         pbar = tqdm(total=len(summary_data))
-        for function in summary_data:
+        for function_dict in summary_data:
+            function_name, function = next(iter(function_dict.items()))
             G = nx.MultiDiGraph()
             instructions = function['function_instructions']
             inst_instID_dict = inst_map_to_instID(function)
-            function_name = function['function_name']
             function_params = function['function_param_list']
-            G.add_node(function_name,function_params=function_params, bb_num = function['bb_num'])
+            function_base_info = function['base_info']
+            G.add_node(function_name,function_params=function_params, bb_num = function_base_info['function_blocks_num'])
 
             # 建立同一基本块之间的指令流关系
             for index,block_info in enumerate(function['function_blocks']):
@@ -143,44 +157,47 @@ def main():
                     # 如果该指令是'br'指令
                     if inst_info['opcode'] == 'br':
                         # 如果该跳转指令是无条件跳转指令，将其与该基本快中的最长路径上的指令节点相连接
-                        if inst_info['branch_condition'] == 'False':
+                        if inst_info['condition'] == 'None':
                             leaves_with_depth = dfs_tree_edges(G, block_info)
                             for leaf in leaves_with_depth:
                                 G.add_edge(leaf[0], inst_id, edge_type='Sequential')
                         # 如果该跳转指令是条件跳转指令，将其与条件表达式相连接
-                        elif inst_info['branch_condition'] in instructions:
-                            G.add_edge(inst_instID_dict[inst_info['branch_condition']], inst_id, edge_type='Data')
-                        elif inst_info['branch_condition'] in function_params:
+                        elif inst_info['condition'] in instructions:
+                            G.add_edge(inst_instID_dict[inst_info['condition']], inst_id, edge_type='Data')
+                        elif inst_info['condition'] in function_params:
                             G.add_edge(function_name, inst_id, edge_type='Parameter')
                         
                         # 如果该跳转指令是无条件跳转指令
-                        if inst_info['branch_condition'] == 'False':
-                            br_target = 'block-' + inst_info['br_target'].replace('%', '')
+                        if len(inst_info['targets']) == 1:
+                            br_target = inst_info['targets'][0]
                             G.add_edge(inst_id, br_target, edge_type='Control')
                         # 如果该跳转指令是条件跳转指令
                         else:
-                            true_target = 'block-' + inst_info['true_target'].replace('%', '')
-                            false_target = 'block-' + inst_info['false_target'].replace('%', '')
+                            true_target = inst_info['targets'][0]
+                            false_target = inst_info['targets'][1]
                             G.add_edge(inst_id, true_target, edge_type='Control')
                             G.add_edge(inst_id, false_target, edge_type='Control')
                         continue
+
                     elif inst_info['opcode'] =='switch':
-                        switch_condition = inst_info['switch_condition']
+                        switch_condition = inst_info['condition']
                         # 建立switch指令与switch条件表达式的关系
                         if switch_condition in instructions:
                             G.add_edge(inst_instID_dict[switch_condition], inst_id, edge_type='Data')
                         if switch_condition in function_params:
                             G.add_edge(function_name, inst_id, edge_type='Parameter')
                         # 建立switch指令与case目标基本块的关系
-                        for index,target in enumerate(inst_info['case_targets']):
+                        for index,target in enumerate(inst_info['targets']):
                             case_target = 'block-' + target.replace('%', '')
                             G.add_edge(inst_id, case_target, edge_type='Control')
                         continue
+
                     elif inst_info['opcode'] == 'unreachable':
                         leaves_with_depth = dfs_tree_edges(G, block_info)
                         for leaf in leaves_with_depth:
                             G.add_edge(leaf[0], inst_id, edge_type='Sequential')
                         continue
+                    
                     elif inst_info['opcode'] == 'ret':
                         if inst_info['return_value'] in instructions:
                             G.add_edge(inst_instID_dict[inst_info['return_value']], inst_id, edge_type='Data')
@@ -191,14 +208,15 @@ def main():
                             for leaf in leaves_with_depth:
                                 G.add_edge(leaf[0], inst_id, edge_type='Sequential')
                         continue
+
                     # 建立指令节点与其他节点之间的关系
                     else:
                         for operand in inst_info['operand_list']:
                             if is_constant(operand):
                                 pass
-                            if '@' in operand and operand not in instructions:
+                            if operand in global_infos.keys():
                                 global_info = global_infos[operand]
-                                define = global_info['define']
+                                define = global_info['raw_definition'] if 'raw_definition' in global_info.keys() else 'define'
                                 G.add_node(operand, define=define, is_global='true')
                                 G.add_edge(operand, inst_id, edge_type='Global')
                             # if operand in function_params:
@@ -219,9 +237,12 @@ def main():
                 "links":remove_redundant_edges,
                 "nodes_info":nodes_info
             }
-            iscg_json.setdefault(function['function_name'], function_iscg)
+            iscg_json.setdefault(function_name, function_iscg)
             dump_json_file(iscg_json, iscg_path)
             pbar.update(1)
         pbar.close()
 if __name__ == '__main__':
-    main()
+    process_proj(r'/home/lab314/cjw/similarity/datasets/source/norm_summary/MayaPosch_____NymphCast')
+    # for proj in os.listdir(summary_root):
+    #     proj_root = os.path.join(summary_root, proj)
+    #     process_proj(proj_root)

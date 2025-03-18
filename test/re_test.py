@@ -1,23 +1,27 @@
 import re
 
-global_vars = """
-@8 = external local_unnamed_addr global i32
-@global_var_e9074 = local_unnamed_addr global i32 0
-@global_var_3c407 = constant [3 x i8] c"wb\00"
-@global_var_eb1b0 = global i32 0
-@global_var_490ac = external constant i32
-@global_var_eb240 = local_unnamed_addr global i32 0
-@global_var_631ac = local_unnamed_addr constant i32 262145
-@global_var_4a65c = constant [24 x i8]* @global_var_44b4a
-@global_var_4a6a4 = constant [25 x i8]* @global_var_1a323
-"""
+inst = r"i8* inttoptr (i32 67108864 to i8*)"
 
-# 正则表达式模式
-pattern = r'@\w+ = (?:external )?(?:local_unnamed_addr )?(?:constant )?(?:global )?(\[(\d+) x (i\d+)\](?: c"([^"]*)")?|\* @\w+)?(?: (\d+))?'
+patt = r'(?:i8|i6|i32|i64)\s+\d+'
+has_const = re.search(patt, inst)
+result = re.findall(patt, inst).pop()
+type_part = result.split(' ')[0]
+number_part = result.split(' ')[1]
+print(has_const)
+if has_const:
+    print(type_part)
+    print(number_part)
 
-matches = re.finditer(pattern, global_vars)
+def replace_func(match):
+    type_part = match.group(1)  # 类型部分（i8、i32等）
+    number_part = match.group(2)  # 数字部分
+    return f"{type_part} <const>"
 
-for match in matches:
+# inst = "switch i8 %43, label %block_41 [\n    i8 32, label %block_14\n    i8 35, label %block_17\n    i8 42, label %block_35\n    i8 43, label %block_15\n    i8 45, label %block_16\n    i8 46, label %block_18\n    i8 48, label %block_32\n    i8 49, label %block_34\n    i8 50, label %block_34\n    i8 51, label %block_34\n    i8 52, label %block_34\n    i8 53, label %block_34\n    i8 54, label %block_34\n    i8 55, label %block_34\n    i8 56, label %block_34\n    i8 57, label %block_34\n    i8 76, label %block_28\n    i8 79, label %block_31\n    i8 104, label %block_26\n    i8 108, label %block_27\n    i8 113, label %block_29\n    i8 122, label %block_30\n  ]"
+# print(re.sub(r'(i8|i32|i64|i16)\s+(\d+)', replace_func, inst))
+
+
+""" for match in matches:
     if match:
         var_name = match.group(0).split(' = ')[0]
         var_type = match.group(1)
@@ -42,4 +46,4 @@ for match in matches:
         else:
             array_type = None
 
-        print(f"Variable: {var_name}, Type: {array_type if array_type else var_type}, Value: {var_value}")
+        print(f"Variable: {var_name}, Type: {array_type if array_type else var_type}, Value: {var_value}") """

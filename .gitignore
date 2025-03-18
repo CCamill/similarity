@@ -1,5 +1,11 @@
-datasets
-ir_files
-global_info
-RetDec-v5
+.vscode/
+.idea/
+bert-base-uncased
+datasets/
+desend2ir/binaries
+desend2ir/binaries_asm
+model
+preprocess/
+!preprocess/*.py
+RetDec
 test

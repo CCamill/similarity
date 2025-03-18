@@ -5,56 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "summary_test",
+            "name": "wordpiece",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}\\test\\summary_test.py",
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "inst_info_summary",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}\\preprocess\\inst_info_summary.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--input_dir",
-                "${workspaceFolder}\\ll_files",
-                "--output_file",
-                "${workspaceFolder}\\summary_files"
-            ]
-        },
-        {
-            "name": "binary_lifting",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}\\preprocess\\binary_lifting.py",
+            "program": "${workspaceFolder}\\model\\wordpiece_tokenizer.py",
             "console": "integratedTerminal",
             "args": []
         },
-        {
-            "name": "gen_iscg",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}\\preprocess\\gen_iscg.py",
-            "console": "integratedTerminal",
-            "args": []
-        },
-        {
-            "name": "get_global_info",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}\\preprocess\\get_global_info.py",
-            "console": "integratedTerminal",
-            "args": []
-        },
-        {
-            "name": "DFS",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}\\preprocess\\DFS.py",
-            "console": "integratedTerminal",
-            "args": []
-        }
     ]
 }

@@ -50,15 +50,15 @@ def get_function_name(operand):
     return function_name
 
 def main():
-    ll_file = 'E:\\Desktop\\similarity\\ll_files\\demo_10_o1_dbg.ll'
+    ll_file = r'E:\Desktop\similarity\datasets\ir_files\arm32-clang-5.0-O0_curl_O3.ll'
     output_file = 'E:\\Desktop\\similarity\\ll_files\\1.json'
     llvm_name = os.path.basename(ll_file)
     llvm.initialize()
     llvm.initialize_native_target()
     llvm.initialize_native_asmprinter()
     llvm_ir = generate_llvm_ir(ll_file)
-    global_info_path = "E:\\Desktop\\similarity\\global_info\\1_global_info.json"
-    global_infos = load_json_file(global_info_path) if os.path.exists(global_info_path) else {}
+    global_info_path = "E:\\Desktop\\similarity\\datasets\\global_info\\arm32-clang-5.0-O0_curl_O3_global_info.json"
+    global_infos = load_json_file(global_info_path)
     global_var_list = [key for key, _ in global_infos.items()]
 
     # 解析 LLVM IR
@@ -67,7 +67,7 @@ def main():
         llvm_mod.verify()
         print(f"{llvm_name} parsed successfully.\n")
     except RuntimeError as e:
-        print(f"Error parsing LLVM IR: {e}")
+        print(f"Error parsing LLVM IR: {llvm_name}")
         exit(1)
     functions = ['@' + function.name for function in llvm_mod.functions]
     for function in llvm_mod.functions:
@@ -75,44 +75,38 @@ def main():
         for block in function.blocks:
             op_inst_map = {}
             block_insts = []
-            cmp_insts = []
             for inst in block.instructions:
+                inst_info = {}
                 instruction = str(inst).strip()
                 instructions.append(instruction)
                 opcode = str(inst.opcode).strip()
                 op_inst_map[opcode] = instruction
                 block_insts.append(instruction)
-                operand_list = [str(operand).strip() for operand in inst.operands]
+                operands = [str(operand).strip() for operand in inst.operands]
                 norm_operands = []
-                if '%7 = getelementptr inbounds [3 x i8*], [3 x i8*]* @switch.table.displayPerson' in instruction:
-                    for operand in operand_list:
-                        is_fun = {"Function","Attrs", "define", "declare"} & set(operand.split(" "))
-                        #if not is_fun:
-                        
-                        operand_split = operand.split(" ")
-                        global_vars = [var for var in operand_split if var.startswith('@')]
-                        norm_global_vars = []
-                        for var in global_vars:
-                            if var.endswith(','):
-                                norm_global_vars.append(var.replace(',', ''))
-                        print(operand_split)
-                        print(set(operand_split) & set(global_var_list))
-                        """ if '@' in operand:
+                if instruction == "%22 = load %_IO_FILE*, %_IO_FILE** @global_var_eb4a8, align 4, !insn.addr !22":
+                    pass
+                norm_operands = []
+                if opcode not in ["ret", "br", "switch"]:
+                    for operand in operands:
+                        if '@' in operand:
                             is_fun = {"Function","Attrs", "define", "declare"} & set(operand.split(" "))
                             if is_fun:
                                 operand = get_function_name(operand)
+                                if operand in functions:
+                                    inst_info.setdefault("call_back_func", operand)
+                                    continue
                                 norm_operands.append(operand)
                                 continue
-                            if set(operand) & set(global_var_list):
-                                continue
-                            if not is_fun and operand not in instructions and 'call' not in operand:
+                            has_global = set(operand.split(" ")) & set(global_var_list)
+                            if not is_fun and operand not in instructions and 'call' not in operand and has_global:
                                 global_var = get_global_var_name(operand)
                                 if global_var:
                                     for var in global_var:
                                         norm_operands.append(var)
                                 continue
-                        norm_operands.append(operand)   """      
-                
+                        norm_operands.append(operand)        
+                    inst_info.setdefault("operand_list", norm_operands)       
 
 if __name__ == '__main__':
     main()

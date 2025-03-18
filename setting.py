@@ -1,1 +1,0 @@
-WORK_DIR = "e:\Desktop\similarity"
