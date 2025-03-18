@@ -4,8 +4,15 @@ bert-base-uncased
 datasets/
 desend2ir/binaries
 desend2ir/binaries_asm
+desend2ir/__pycache__
 model
-preprocess/
-!preprocess/*.py
+preprocess/.cache
+preprocess/.dotnet
+preprocess/.vscode-server
+preprocess/.xterminal
+preprocess/.bash_history
+preprocess/.python_history
+preprocess/.viminfo
+preprocess/.wget-hsts
 RetDec
 test
