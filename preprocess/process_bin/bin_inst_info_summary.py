@@ -131,12 +131,10 @@ def process_ir_file(ll_file, output_file, global_info_path, struct_info_path):
         try:
             global_var_list = list(global_infos.keys())
         except Exception as e:
-            logging.error(f"{e}")
             global_var_list = []
         try:
             struct_var_list = list(struct_infos.keys())
         except Exception as e:
-            logging.error(f"{e}")
             struct_var_list = []
         
         file_info = []
@@ -248,15 +246,13 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
     
     # 检测全局变量
     # 去除*号是为了做集合&运算时能匹配到结构体指针
-    inst_no_syb = normalized_instruction.replace(',', ' ').replace('*',' ').split()
+    inst_no_syb = normalized_instruction.replace(',', ' ').replace('*',' ').replace(']',' ').split()
 
     vars = re.findall(r'@(?:[\w.]+)', instruction_str)
     # found_globals = {var for var in vars if var in global_var_list}
     set_inst_no_syb = set(inst_no_syb)
-    if len(global_var_list) > 0:
-        found_globals = set_inst_no_syb & set(global_var_list)
-    if len(struct_var_list) > 0:
-        found_structs = set_inst_no_syb & set(struct_var_list)
+    found_globals = set_inst_no_syb & set(global_var_list)
+    found_structs = set_inst_no_syb & set(struct_var_list)
 
     function_globals.update(found_globals)
     function_structs.update(found_structs)

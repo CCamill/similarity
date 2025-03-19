@@ -9,8 +9,7 @@ from collections import defaultdict
 import sys
 from tqdm import tqdm
 import time
-# from normalize import process_single_proj
-# from source_inst_info_summary import processing_single_proj
+from source_inst_info_summary import processing_single_proj
 
 def load_json_file(file_path):
     with open(file_path, 'r') as f:
@@ -52,13 +51,6 @@ def main():
         new_path = os.path.join(binary_info_path, basename)
         os.rename(path, new_path)
         print(r'succeed move file: ', basename)
-
-
-
-
-
-
-
     
 def find_dict_with_key_value(data, target_key, target_value):
     """
@@ -88,11 +80,6 @@ def find_dict_with_key_value(data, target_key, target_value):
 
     return None  # 未找到目标键值对
 
-def test1():
-    path = r'/home/lab314/cjw/similarity/datasets/source/summary/maxmind_____libmaxminddb'
-    out_path = r'/home/lab314/cjw/similarity/datasets/source/norm_summary/maxmind_____libmaxminddb'    
-    process_single_proj(path, out_path)
-
 def test2():
     sumy = load_json_file(r'/home/lab314/cjw/similarity/datasets/source/summary/maxmind_____libmaxminddb/-Os/test_info_summary.json')
     for data in sumy:
@@ -100,10 +87,6 @@ def test2():
         target_value = '%13 = tail call i8* @strchr(i8* noundef nonnull %12, i32 noundef 46) #11'
         result= find_dict_with_key_value(data, target_key, target_value)
         print(result)
-
-def test3():
-    proj_path = r'/home/lab314/cjw/similarity/datasets/source/source_lls/maxmind_____libmaxminddb'
-    processing_single_proj(proj_path)
 
 
 def test4():
@@ -148,7 +131,63 @@ def test6():
     stdout, stderr = proc.communicate(timeout=150)
     code = proc.returncode
     print(code)
+def test1():
+    instruction_str = "%5 = alloca %class.asCString.2199, align 8"
+    normalized_instruction = re.sub(r'%([\w.]+)\.\d+', r'%\1', instruction_str)
+    print(normalized_instruction)
+
+def replace_func(match):
+    type_part = match.group(1)  # 类型部分（i8、i32等）
+    number_part = match.group(2)  # 数字部分
+    return f"{type_part} <const>"
+def test3():
+    instruction = r'br i1 %18 , label %block_3 , label %block_4"'
+    instruction = re.sub(r'(i8|i32|i24|i64|i16)\s+(\d+)', replace_func, instruction)
+    print(instruction)
+
+def collect_json_files(proj_root):
+    json_paths = []
+    for root, _, files in os.walk(proj_root):
+        for file in files:
+            file_ext = os.path.splitext(file)[1].lower()
+            full_path = os.path.join(root, file)
+
+            if file.endswith('.json'):
+                json_paths.append(full_path)
+    
+    return json_paths
+
+from collections import Counter
+def fun_call_num():
+    # 统计函数的调用次数
+
+    summary_root = r'/home/lab314/cjw/similarity/datasets/source/summary_no_global'
+    pbar =  tqdm(total=len(os.listdir(summary_root)))
+    all_function = []
+    for proj in os.listdir(summary_root):
+        proj_root = os.path.join(summary_root, proj)
+        json_paths = collect_json_files(proj_root)
+        for json_path in json_paths:
+            try: 
+                data = load_json_file(json_path)
+            except Exception as e:
+                print(f"{json_path} error {e}")
+                continue
+            for function_dict in data:
+                function_name, function = next(iter(function_dict.items()))
+                function_calls = function['function_calls']
+                all_function += function_calls
+        pbar.update(1)
+    pbar.close()
+    count = Counter(all_function)
+    count_dict = dict(count)
+    sorted_count_dict = dict(sorted(count_dict.items(), key=lambda item: item[1], reverse=True))
+    with open('/home/lab314/cjw/similarity/datasets/function_call_count_result.json', 'w', encoding='utf-8') as f:
+        json.dump(sorted_count_dict, f, ensure_ascii=False, indent=4)
+    
+    print("统计结果已写入 function_call_count_result.json 文件")
+        
 
 if __name__ == '__main__':
-    test6()
+    test1()
     

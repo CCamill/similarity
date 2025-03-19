@@ -11,7 +11,7 @@ import time
 import logging
 from multiprocessing import Pool
 from functools import partial
-from source_get_global_info import extract_global_info_from_module
+from source_normalize import nomalize_files
 
 def setup_logger(log_file):
     """设置日志记录器"""
@@ -102,7 +102,7 @@ def get_called_function_info(operands, instruction):
 
 def get_block_label(block):
     colon_index = str(block).find(':')
-    return str(block)[1:colon_index] if colon_index != -1 else "0"
+    return str(block)[1:colon_index] if colon_index != -1 else "-1"
 
 def process_ir_file(ll_file, output_file, global_info_path, struct_info_path):
     if os.path.exists(output_file):
@@ -119,8 +119,14 @@ def process_ir_file(ll_file, output_file, global_info_path, struct_info_path):
         llvm_mod = parse_llvm_IR(llvm_ir)
         global_infos = load_json_file(global_info_path)
         struct_infos = load_json_file(struct_info_path)
-        struct_var_list = list(struct_infos.keys())
-        global_var_list = list(global_infos.keys())
+        try:
+            struct_var_list = list(struct_infos.keys())
+        except:
+            struct_var_list =  []
+        try:
+            global_var_list = list(global_infos.keys())
+        except:
+            global_var_list = []
         
         file_info = []
         inst_id = 0
@@ -131,11 +137,15 @@ def process_ir_file(ll_file, output_file, global_info_path, struct_info_path):
                 file_info.append(function_data)
                 inst_id = function_data[function.name]["last_inst_id"] + 1
 
+        code = nomalize_files(file_info)
         dump_json_file(file_info, output_file)
-        return 1, None
+        return code, None
     except Exception as e:
-        return 0, str(e)
+        return -1, str(e)
 
+# 新增：规范化结构体名称（移除 .数字 后缀）
+def normal_struct(input):
+    return re.sub(r'%([\w.]+)\.\d+', r'%\1', input)
 def process_function(function, global_var_list, struct_var_list, inst_id):
     function_blocks = []
     function_calls = set()
@@ -144,7 +154,7 @@ def process_function(function, global_var_list, struct_var_list, inst_id):
     function_structs =set()
     instructions = []
     block_labels = []
-    function_param_list = [str(param) for param in function.arguments]
+    function_param_list = [normal_struct(str(param)) for param in function.arguments]
 
     for block in function.blocks:
         block_data, inst_id = process_block(
@@ -222,34 +232,34 @@ def process_block(block, global_var_list, struct_var_list, inst_id, function_cal
 
 def process_instruction(instruction, inst_id, global_var_list, struct_var_list, function_calls, function_vars, function_globals,function_structs):
     instruction_str = del_debug_info(str(instruction).strip())
-    old_instruction_str = instruction_str
     opcode = str(instruction.opcode).strip()
     operands = [str(op).strip() for op in instruction.operands]
 
-    # 新增：规范化结构体名称（移除 .数字 后缀）
+    #规范化结构体名称（移除 .数字 后缀）
     normalized_instruction = re.sub(r'%([\w.]+)\.\d+', r'%\1', instruction_str)  # 处理类型名称
-    
+    old_instruction_str = normalized_instruction
+    if old_instruction_str == "%3 = alloca [1 x %struct.AF_GlyphHintsRec_], align 16":
+        pass
     # 检测全局变量
     # 去除*号是为了做集合&运算时能匹配到结构体指针
-    inst_no_syb = normalized_instruction.replace(',', ' ').replace('*',' ').split()
+    inst_no_syb = normalized_instruction.replace(',', ' ').replace('*',' ').replace(']',' ').split()
 
     vars = re.findall(r'@(?:[\w.]+)', instruction_str)
     # found_globals = {var for var in vars if var in global_var_list}
     set_inst_no_syb = set(inst_no_syb)
-    global_var_set = set(global_var_list)
-    struct_var_set = set(struct_var_list)
     found_globals = set_inst_no_syb & set(global_var_list)
     found_structs = set_inst_no_syb & set(struct_var_list)
 
     function_globals.update(found_globals)
     function_structs.update(found_structs)
+    operand_list = process_operands(operands, opcode)
     
     # 构建指令信息
     inst_info = {
         "inst_id": str(inst_id),
         "instruction": old_instruction_str,
         "opcode": opcode,
-        "operand_list": process_operands(operands, opcode)
+        "operand_list": [normal_struct(operand) for operand in operand_list]
     }
 
     # 变量提取
@@ -265,12 +275,14 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
             function_calls.add(func_name)
             inst_info.update({
                 "called_function_name": func_name,
-                "called_function_return_type": return_type
+                "called_function_return_type": normal_struct(return_type)
             })
 
     elif opcode in ["br", "switch"]:
         labels = re.findall(r'label (%[\w.-]+)', instruction_str)
         condition = operands[0] if len(operands) > 1 else None
+        if condition:
+            condition = normal_struct(condition)
         inst_info.update({
             "condition": condition,
             "targets": labels
@@ -377,7 +389,9 @@ def processing_single_proj(proj_path):
             for status, error_msg, ll_file in results:
                 if status == 1:
                     success_count += 1
-                    logging.info(f"Processed {ll_file} successfully.")
+                    # logging.info(f"Processed {ll_file} successfully.")
+                elif status == 0:
+                    logging.warning(f"{ll_file} not norm")
                 else:
                     logging.error(f"Error processing {ll_file}: {error_msg}")
                 pbar.update(1)
