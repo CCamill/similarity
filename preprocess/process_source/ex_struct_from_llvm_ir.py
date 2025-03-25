@@ -21,7 +21,7 @@ def collect_ll_files(proj_root):
 def process_single_proj(proj_root):
     ll_paths = collect_ll_files(proj_root)
 
-    pbar =  tqdm(total=len(ll_paths), desc=f"{proj_root} Progress")
+    pbar =  tqdm(total=len(ll_paths), desc=f"{os.path.basename(proj_root)} Progress")
     for ll_path in ll_paths:
         dir_path, file_name = os.path.split(ll_path)
         output_dir = dir_path.replace(r'/source_lls/', r'/struct_info/').replace(r'/ir_files/',r'/')
@@ -51,4 +51,4 @@ def main():
         proj_root = os.path.join(ll_root, proj)
         process_single_proj(proj_root)
 if __name__ == '__main__':
-    process_single_proj(r'/home/lab314/cjw/similarity/datasets/source/source_lls/MayaPosch_____NymphCast')
+    process_single_proj(r'/home/lab314/cjw/similarity/datasets/source/source_lls/OpenMathLib_____OpenBLAS')

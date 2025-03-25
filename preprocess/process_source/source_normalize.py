@@ -15,16 +15,8 @@ def dump_json_file(data, file_path):
         json_data = json.dumps(data)
         f.write(json_data.encode('utf-8'))
 
-def get_function():
-    summary_dir = 'E:\Desktop\similarity\datasets\summary_files'
-    summary_files = [os.path.join(summary_dir, summary_file) for summary_file in os.listdir(summary_dir)]
-    for summary_file in summary_files:
-        data = load_json_file(summary_file)
-        for function in data:
-            yield function['function_instructions']
-
-def normalize_label(inst):
-    pass
+def get_varname(instruction):
+    return instruction[:instruction.index('=')].strip().replace(" ", "")
 
 def normal_struct(input):
     return re.sub(r'%([\w.]+)\.\d+', r'%\1', input)
@@ -52,16 +44,14 @@ def replace_func(match):
     return f"{type_part} <const>"
 
 def normalize_const(operand, instruction):
-    patt = r'(?:i8|i16|i24|i32|i64)\s+-?\d+'
+    patt = r'^(?:i8|i16|i24|i32|i64)\s+-?\d+$'
     has_const = re.search(patt, operand)
     if has_const:
         result = re.findall(patt, operand).pop()
         type_part = result.split(' ')[0]
         number_part = result.split(' ')[1]
-        if number_part == '1048576':
-            pass
         list_instruction = instruction.replace(',',' ,').replace(')',' )').replace('(','( ').split()
-        if number_part not in ['0', '1', '8'] and number_part in list_instruction:
+        if number_part not in ['0', '1','2', '3', '4', '5', '6', '7','8', '16', '32', '64'] and number_part in list_instruction:
             indexs = [index for index, value in enumerate(list_instruction) if value == number_part]
             for index in indexs:
                 index = list_instruction.index(number_part)
@@ -97,7 +87,11 @@ def nomalize_instruction(inst:dict,
     if structs:
         for struct in structs:
             instruction = re.sub(struct, struct_norm_struct_map[struct], instruction)
-    
+
+    # 处理指令中的常量
+    for operand in inst['operand_list']:
+        instruction = normalize_const(operand, instruction)
+
     # 如果是函数调用指令，则将指令中的函数名标准化
     if inst.get('called_function_name'):
         called_function_name = inst['called_function_name']
@@ -167,11 +161,13 @@ def nomalize_files(data):
         for block in function['function_blocks']:
             raw_block_info = copy.deepcopy(block)
             blocl_name = block['block_name']
-            block['block_name'] = "%block_"
+            block['block_name'] = label_norm_label_map[blocl_name]
 
             for inst in block['block_insts']:
                 instruction = inst['instruction']
                 old_inst = instruction
+                if old_inst == r"tail call void @__assert_fail(i8* noundef getelementptr inbounds ([16 x i8], [16 x i8]* @.str, i64 0, i64 0), i8* noundef getelementptr inbounds ([115 x i8], [115 x i8]* @.str.1, i64 0, i64 0), i32 noundef 77, i8* noundef getelementptr inbounds ([31 x i8], [31 x i8]* @__PRETTY_FUNCTION__._ZN9asCAtomic9atomicDecEv, i64 0, i64 0)) #4":
+                    pass
                 instruction = nomalize_instruction(inst=inst,
                                                    instruction = instruction,
                                                    function_globals=function_globals,
@@ -181,17 +177,41 @@ def nomalize_files(data):
                                                    global_norm_global_map=global_norm_global_map,
                                                    struct_norm_struct_map=struct_norm_struct_map,
                                                    calls_norm_calls_map=calls_norm_calls_map)
+                
                 if inst.get('targets'):
                     for target in inst['targets']:
                         index = inst['targets'].index(target)
                         inst['targets'][index] = label_norm_label_map[target]
 
                 if inst.get('condition'):
-                    condition = del_debug_info(inst['condition'])
+                    condition = inst['condition']
+                    if condition in raw_function_info['function_instructions']:
+                        # 新增：规范化结构体名称（移除 .数字 后缀）
+                        condition = re.sub(r'%([\w.]+)\.\d+', r'%\1', condition)  # 处理类型名称
+                        # 根据键值对在block字典中找出该指令的字典
+                        condition_inst = find_dict_with_key_value(raw_block_info,"instruction",operand)
+                        if condition_inst == None:
+                            # 如果没有在block字典中找到该指令的字典，则根据键值对在function字典中中找出该指令的字典
+                            condition_inst = find_dict_with_key_value(raw_function_info,"instruction",operand)
+                        if condition_inst == None:
+                            return 0
+                        condition = nomalize_instruction( inst = condition_inst,
+                                                        instruction= condition,
+                                                        function_globals=function_globals,
+                                                        function_structs=function_structs,
+                                                        block_labels=block_labels,
+                                                        label_norm_label_map=label_norm_label_map,
+                                                        global_norm_global_map=global_norm_global_map,
+                                                        struct_norm_struct_map=struct_norm_struct_map,
+                                                        calls_norm_calls_map=calls_norm_calls_map)
                     labels = set(block_labels) & set(condition.replace(',',' ').split())
                     if labels:
                         for label in labels:
                             condition = re.sub(label, label_norm_label_map[label], inst['condition'])
+                    structs = set(condition.replace(',', ' ').replace('*',' ').replace(']',' ').split()) & set(function_structs)
+                    if structs:
+                        for struct in structs:
+                            condition = re.sub(struct, struct_norm_struct_map[struct], condition)
                     inst['condition'] = condition
 
                 # 处理参数列表
@@ -229,9 +249,11 @@ def nomalize_files(data):
                                     operand = re.sub(label, label_norm_label_map[label], operand)
 
                             # 如果operand包含结构体，则将operand中的结构体正则化
-                            structs = set(operand.replace(',', ' ').replace('*',' ').replace(']',' ').split()) & set(function_structs)
+                            structs = set(operand.replace(',', ' ').replace('*',' ').replace(']',' ').replace('(',' ').split()) & set(function_structs)
                             for struct in structs:
                                 operand = struct
+
+                            
                         
                             # 如果operand包含全局变量，则将operand替换为全局变量名
                             globals = set(operand.replace(',',' ').split()) & set(function_globals)
@@ -239,7 +261,8 @@ def nomalize_files(data):
                                 for global_var in globals:
                                     operand = global_var
                             inst['operand_list'][index] = operand
-
+                    
+                        inst['operand_list'][index] = operand
                 block_index = block['block_inst_list'].index(old_inst)
                 block['block_inst_list'][block_index] = instruction
 

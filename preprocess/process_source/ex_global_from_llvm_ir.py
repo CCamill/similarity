@@ -18,7 +18,6 @@ def process_single_proj(proj_root):
 
     pbar =  tqdm(total=len(ll_paths), desc=f"{proj_root} Progress")
     for ll_path in ll_paths:
-        # ll_path = r'/home/lab314/cjw/similarity/datasets/source/source_lls/xCuri0_____ReBarUEFI/ir_files/-Os/ReBarState.ll'
         dir_path, file_name = os.path.split(ll_path)
         output_dir = dir_path.replace(r'/source_lls/', r'/global_info/').replace(r'/ir_files/',r'/')
         out_path = os.path.join(output_dir,file_name.replace(".ll","_globals.json"))

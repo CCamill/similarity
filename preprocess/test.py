@@ -9,7 +9,7 @@ from collections import defaultdict
 import sys
 from tqdm import tqdm
 import time
-from source_inst_info_summary import processing_single_proj
+import copy
 
 def load_json_file(file_path):
     with open(file_path, 'r') as f:
@@ -186,8 +186,72 @@ def fun_call_num():
         json.dump(sorted_count_dict, f, ensure_ascii=False, indent=4)
     
     print("统计结果已写入 function_call_count_result.json 文件")
-        
 
+def test4():
+    inst = '%3 = bitcast %"class.litehtml::el_body"* %0 to %"class.litehtml::html_tag.23463"*'
+    if '"' in inst:
+        inst = inst.replace('"','')
+    print(inst)
+
+import re
+def test5():
+    consts = set()
+    str = r"i32 1819239276"
+    pattern = r'^(?:i8|i16|i24|i32|i64)\s+(-?\d+)$'
+    match = re.search(pattern,str)
+    if match:
+        const = match.group(1)
+        consts.add(const)
+    print(consts)
+
+def fun_const_num():
+    # 统计函数的调用次数
+
+    summary_root = r'/home/lab314/cjw/similarity/datasets/source/summary'
+    pbar =  tqdm(total=len(os.listdir(summary_root)))
+    all_const = []
+    for proj in os.listdir(summary_root):
+        proj_root = os.path.join(summary_root, proj)
+        json_paths = collect_json_files(proj_root)
+        for json_path in json_paths:
+            try: 
+                data = load_json_file(json_path)
+            except Exception as e:
+                print(f"{json_path} error {e}")
+                continue
+            for function_dict in data:
+                function_name, function = next(iter(function_dict.items()))
+                function_consts = function['function_consts']
+                all_const += function_consts
+        pbar.update(1)
+    pbar.close()
+    count = Counter(all_const)
+    count_dict = dict(count)
+    sorted_count_dict = dict(sorted(count_dict.items(), key=lambda item: item[1], reverse=True))
+    with open('/home/lab314/cjw/similarity/datasets/function_const_count_result.json', 'w', encoding='utf-8') as f:
+        json.dump(sorted_count_dict, f, ensure_ascii=False, indent=4)
+    
+    print("统计结果已写入 function_const_count_result.json 文件")
+
+def test6():
+    struct_pattern = r'%([\w:.]+\.\d+)'
+    instruction = r'%76 = getelementptr inbounds %class.std::__1::allocator.100, %class.std::__1::allocator.100* %3, i64 0, i32 0'
+    matches = re.findall(struct_pattern, instruction)
+    print(matches)
+
+def normal_struct(input):
+    if '"' in input:
+        input = input.replace('"','')
+    return re.sub(r'%([\w:.]+)\.\d+', r'%\1', input)
+
+def test7():
+    operand = r'%76 = getelementptr inbounds %class.std::__1::allocator, %class.std::__1::allocator.100* %3, i64 0, i32 0'
+    deepcopy_operand = copy.deepcopy(operand)
+    old_operand = operand
+    operand = normal_struct(operand)
+    print("operand         : ", operand)
+    print("deepcopy_operand: ", deepcopy_operand)
+    print("old_operand     : ",old_operand)
 if __name__ == '__main__':
-    test1()
+    test7()
     

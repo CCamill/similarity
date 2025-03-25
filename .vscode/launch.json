@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "wordpiece",
+            "name": "source_inst_info_summary",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}\\model\\wordpiece_tokenizer.py",
+            "program": "${workspaceFolder}/preprocess/process_source/source_inst_info_summary.py",
             "console": "integratedTerminal",
             "args": []
         },

@@ -60,7 +60,15 @@ def parse_llvm_IR(llvm_ir):
 def del_debug_info(inst):
     if '!insn.addr' in inst:
         idx = inst.index('!insn.addr') - 2
-        return inst[:idx]
+        inst =  inst[:idx]
+    if '!tbaa' in inst:
+        idx = inst.index('!tbaa') - 2
+        inst =  inst[:idx]
+    if '!llvm.loop' in inst:
+        idx = inst.index('!llvm.loop') - 2
+        inst =  inst[:idx]
+    if '"' in inst:
+        inst = inst.replace('"','')
     return inst
 
 def get_global_var_name(operand):
@@ -101,7 +109,7 @@ def get_called_function_info(operands, instruction):
         )
 
 def get_block_label(block):
-    colon_index = str(block).find(':')
+    colon_index = str(block).find(':                                  ')
     return str(block)[1:colon_index] if colon_index != -1 else "-1"
 
 def process_ir_file(ll_file, output_file, global_info_path, struct_info_path):
@@ -137,7 +145,8 @@ def process_ir_file(ll_file, output_file, global_info_path, struct_info_path):
                 file_info.append(function_data)
                 inst_id = function_data[function.name]["last_inst_id"] + 1
 
-        code = nomalize_files(file_info)
+        # code = nomalize_files(file_info)
+        code = 1
         dump_json_file(file_info, output_file)
         return code, None
     except Exception as e:
@@ -145,18 +154,21 @@ def process_ir_file(ll_file, output_file, global_info_path, struct_info_path):
 
 # 新增：规范化结构体名称（移除 .数字 后缀）
 def normal_struct(input):
-    return re.sub(r'%([\w.]+)\.\d+', r'%\1', input)
+    if '"' in input:
+        input = input.replace('"','')
+    return re.sub(r'%([\w:.]+)\.\d+', r'%\1', input)
 def process_function(function, global_var_list, struct_var_list, inst_id):
     function_blocks = []
     function_calls = set()
     function_vars = set()
     function_globals = set()
-    function_structs =set()
+    function_structs = set()
+    function_consts = set()
     instructions = []
     block_labels = []
-    function_param_list = [normal_struct(str(param)) for param in function.arguments]
+    function_param_list = [str(param) for param in function.arguments]
 
-    for block in function.blocks:
+    for index,block in enumerate(function.blocks):
         block_data, inst_id = process_block(
             block, 
             global_var_list,
@@ -166,11 +178,15 @@ def process_function(function, global_var_list, struct_var_list, inst_id):
             function_vars,
             function_globals,
             function_structs,
+            function_consts,
             instructions
         )
         if block_data:
             function_blocks.append(block_data)
-            block_labels.append(f"%{get_block_label(block)}")
+            if index == 0:
+                block_labels.append(f"%-1")
+            else:
+                block_labels.append(f"%{get_block_label(block)}")
 
     if not function_blocks:
         return None
@@ -184,19 +200,20 @@ def process_function(function, global_var_list, struct_var_list, inst_id):
                 "function_structs_num": len(function_structs),
                 "function_blocks_num": len(function_blocks)
             },
-            "function_calls": sorted(list(function_calls)),
-            "function_vars": sorted(list(function_vars)),
             "block_labels": block_labels,
-            "function_instructions": instructions,
-            "function_param_list": function_param_list,
+            "function_calls": sorted(list(function_calls)),
             "function_structs": sorted(list(function_structs)),
             "function_globals": sorted(list(function_globals)),
+            "function_consts": sorted(list(function_consts)),
+            "function_instructions": instructions,
+            "function_param_list": function_param_list,
             "function_blocks": function_blocks,
+            "function_vars": sorted(list(function_vars)),
             "last_inst_id": inst_id - 1
         }
     }
 
-def process_block(block, global_var_list, struct_var_list, inst_id, function_calls, function_vars, function_globals, function_structs, instructions):
+def process_block(block, global_var_list, struct_var_list, inst_id, function_calls, function_vars, function_globals, function_structs,function_consts, instructions):
     block_insts = []
     block_label = get_block_label(block)
     block_var_list = []
@@ -210,7 +227,8 @@ def process_block(block, global_var_list, struct_var_list, inst_id, function_cal
             function_calls,
             function_vars,
             function_globals,
-            function_structs
+            function_structs,
+            function_consts
         )
         if inst_data:
             block_insts.append(inst_data)
@@ -230,22 +248,24 @@ def process_block(block, global_var_list, struct_var_list, inst_id, function_cal
         "block_insts": block_insts
     }, inst_id
 
-def process_instruction(instruction, inst_id, global_var_list, struct_var_list, function_calls, function_vars, function_globals,function_structs):
+def process_instruction(instruction, inst_id, global_var_list, struct_var_list, function_calls, function_vars, function_globals,function_structs, function_consts):
     instruction_str = del_debug_info(str(instruction).strip())
     opcode = str(instruction.opcode).strip()
     operands = [str(op).strip() for op in instruction.operands]
 
+    # struct_pattern = r'%([\w:.]+\.\d+)'
+    # matches = re.findall(struct_pattern, instruction)
+    # if matches:
+    #     function_structs.update(set(matches) & set(struct_var_list))
+
+
     #规范化结构体名称（移除 .数字 后缀）
-    normalized_instruction = re.sub(r'%([\w.]+)\.\d+', r'%\1', instruction_str)  # 处理类型名称
+    normalized_instruction = normal_struct(instruction_str)  # 处理类型名称
     old_instruction_str = normalized_instruction
-    if old_instruction_str == "%3 = alloca [1 x %struct.AF_GlyphHintsRec_], align 16":
-        pass
     # 检测全局变量
     # 去除*号是为了做集合&运算时能匹配到结构体指针
-    inst_no_syb = normalized_instruction.replace(',', ' ').replace('*',' ').replace(']',' ').split()
+    inst_no_syb = normalized_instruction.replace('(',' ').replace(')',' ').replace(',', ' ').replace('*',' ').replace(']',' ').split()
 
-    vars = re.findall(r'@(?:[\w.]+)', instruction_str)
-    # found_globals = {var for var in vars if var in global_var_list}
     set_inst_no_syb = set(inst_no_syb)
     found_globals = set_inst_no_syb & set(global_var_list)
     found_structs = set_inst_no_syb & set(struct_var_list)
@@ -253,13 +273,20 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
     function_globals.update(found_globals)
     function_structs.update(found_structs)
     operand_list = process_operands(operands, opcode)
+
+    pattern = r'^(?:i8|i16|i24|i32|i64)\s+(-?\d+)$'
+    for operand in operand_list:
+        match = re.search(pattern,operand)
+        if match:
+            const = match.group(1)
+            function_consts.add(const)
     
     # 构建指令信息
     inst_info = {
         "inst_id": str(inst_id),
         "instruction": old_instruction_str,
         "opcode": opcode,
-        "operand_list": [normal_struct(operand) for operand in operand_list]
+        "operand_list": [operand for operand in operand_list]   #operand不需要对其中的结构体标准化，防止后续生成图示找不到原结构体定义
     }
 
     # 变量提取
@@ -269,27 +296,34 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
         function_vars.add(var_name)
 
     # 特殊指令处理
-    if opcode == "call":
+    if opcode in ["call"]:
         func_name, return_type = get_called_function_info(operands, instruction_str)
         if '@' in func_name:
             function_calls.add(func_name)
             inst_info.update({
                 "called_function_name": func_name,
-                "called_function_return_type": normal_struct(return_type)
+                "called_function_return_type": return_type  #return_type不需要对其中的结构体标准化，防止后续生成图示找不到原结构体定义
             })
 
     elif opcode in ["br", "switch"]:
         labels = re.findall(r'label (%[\w.-]+)', instruction_str)
         condition = operands[0] if len(operands) > 1 else None
         if condition:
-            condition = normal_struct(condition)
+            condition = normal_struct(condition)    #condition需要对其中的结构体标准化，因为condition通常都是指令，
         inst_info.update({
             "condition": condition,
             "targets": labels
         })
     elif opcode == "invoke":
+        func_name, return_type = get_called_function_info(operands, instruction_str)
+        if '@' in func_name:
+            function_calls.add(func_name)
+            inst_info.update({
+                "called_function_name": func_name,
+                "called_function_return_type": return_type  #return_type不需要对其中的结构体标准化，防止后续生成图示找不到原结构体定义
+            })
         labels = re.findall(r'label (%[\w.-]+)', instruction_str)
-        operand_list =  [op for op in operands if not any(kw in op for kw in ['; preds ='])]
+        operand_list =  [op for op in operands if not any(kw in op for kw in ['; preds =', 'Function Attrs', 'declare'])]
         inst_info.update({
             "targets": labels,
             "operand_list": operand_list
@@ -303,7 +337,7 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
 def process_operands(operands, opcode):
     if opcode in ["ret", "br", "switch","invoke"]:
         return []
-    return [op for op in operands if not any(kw in op for kw in ['Function Attrs', 'declare', 'define'])]
+    return [del_debug_info(op) for op in operands if not any(kw in op for kw in ['Function Attrs', 'declare', 'define'])]
 
 def process_ir_file_wrapper(args):
     """多进程包装函数"""
@@ -389,7 +423,6 @@ def processing_single_proj(proj_path):
             for status, error_msg, ll_file in results:
                 if status == 1:
                     success_count += 1
-                    # logging.info(f"Processed {ll_file} successfully.")
                 elif status == 0:
                     logging.warning(f"{ll_file} not norm")
                 else:
