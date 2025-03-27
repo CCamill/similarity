@@ -11,6 +11,41 @@ from tqdm import tqdm
 import time
 import copy
 
+LLVM_OPCODES = {
+    # Terminator Instructions（终止指令）
+    'ret', 'br', 'switch', 'indirectbr', 'invoke', 'resume', 
+    'catchswitch', 'catchret', 'cleanupret', 'unreachable',
+
+    # Binary Operations（二元运算）
+    'add', 'fadd', 'sub', 'fsub', 'mul', 'fmul', 
+    'udiv', 'sdiv', 'fdiv', 'urem', 'srem', 'frem',
+
+    # Bitwise Binary Operations（位运算）
+    'shl', 'lshr', 'ashr', 'and', 'or', 'xor',
+
+    # Vector Operations（向量运算）
+    'extractelement', 'insertelement', 'shufflevector',
+
+    # Aggregate Operations（聚合操作）
+    'extractvalue', 'insertvalue',
+
+    # Memory Access and Addressing（内存访问与寻址）
+    'alloca', 'load', 'store', 'fence', 'cmpxchg', 'atomicrmw',
+    'getelementptr',  # GEP（指针计算）
+
+    # Conversion Operations（类型转换）
+    'trunc', 'zext', 'sext', 'fptrunc', 'fpext', 
+    'fptoui', 'fptosi', 'uitofp', 'sitofp', 
+    'ptrtoint', 'inttoptr', 'bitcast', 'addrspacecast',
+
+    # Other Operations（其他操作）
+    'icmp', 'fcmp', 'phi', 'select', 'call', 
+    'va_arg', 'landingpad', 'catchpad', 'cleanuppad',
+
+    # Special Instructions（特殊指令）
+    'freeze',  # (LLVM 10+)
+}
+
 def load_json_file(file_path):
     with open(file_path, 'r') as f:
         data = json.load(f)
@@ -252,6 +287,49 @@ def test7():
     print("operand         : ", operand)
     print("deepcopy_operand: ", deepcopy_operand)
     print("old_operand     : ",old_operand)
+
+def test8():
+    operand_list=[
+                "%23 = getelementptr inbounds %struct.hb_face_t.735, %struct.hb_face_t.735* %11, i64 0, i32 8, i32 24, i32 0",
+                "%struct.hb_face_t.735* %11"
+              ]
+    normal_operand_list = []
+    for operand in operand_list:
+        if set(operand.split()) & LLVM_OPCODES:
+            normal_operand_list.append(normal_struct(operand))
+        else:
+            normal_operand_list.append(operand)
+    print(normal_operand_list)
+
+def del_debug_info(inst):
+    index = inst.find('!') - 2
+    inst =  inst[:index]
+    return inst
+
+def test9():
+    inst = del_debug_info("%95 = load i32, i32* %94, align 8, !tbaa !65, !noalias !54")
+    print(inst)
+
+def advanced_replace(s, pattern=r'[(),*\]\[\]<>]', replacement=' '):
+    """使用正则表达式处理替换"""
+    return re.sub(pattern, replacement, s).split()
+
+def test10(file_path):
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+    # 调试：检查嵌套集合
+    def check_nested(obj):
+        if isinstance(obj, dict):
+            for v in obj.values():
+                if isinstance(v, (list, dict)) and any(isinstance(i, (list, dict)) for i in (v.values() if isinstance(v, dict) else v)):
+                    raise ValueError(f"Nested collection in {obj}")
+                check_nested(v)
+        elif isinstance(obj, list):
+            for i in obj:
+                check_nested(i)
+    check_nested(data)  # 触发异常
+    return data
+
 if __name__ == '__main__':
-    test7()
+    test10(r'/home/lab314/cjw/similarity/datasets/source/norm_summary/MayaPosch_____NymphCast/-Os/box_info_summary.json')
     

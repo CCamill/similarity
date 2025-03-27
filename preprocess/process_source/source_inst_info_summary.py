@@ -11,7 +11,44 @@ import time
 import logging
 from multiprocessing import Pool
 from functools import partial
+from operator import itemgetter
 from source_normalize import nomalize_files
+
+LLVM_OPCODES = {
+    # Terminator Instructions（终止指令）
+    'ret', 'br', 'switch', 'indirectbr', 'invoke', 'resume', 
+    'catchswitch', 'catchret', 'cleanupret', 'unreachable',
+
+    # Binary Operations（二元运算）
+    'add', 'fadd', 'sub', 'fsub', 'mul', 'fmul', 
+    'udiv', 'sdiv', 'fdiv', 'urem', 'srem', 'frem',
+
+    # Bitwise Binary Operations（位运算）
+    'shl', 'lshr', 'ashr', 'and', 'or', 'xor',
+
+    # Vector Operations（向量运算）
+    'extractelement', 'insertelement', 'shufflevector',
+
+    # Aggregate Operations（聚合操作）
+    'extractvalue', 'insertvalue',
+
+    # Memory Access and Addressing（内存访问与寻址）
+    'alloca', 'load', 'store', 'fence', 'cmpxchg', 'atomicrmw',
+    'getelementptr',  # GEP（指针计算）
+
+    # Conversion Operations（类型转换）
+    'trunc', 'zext', 'sext', 'fptrunc', 'fpext', 
+    'fptoui', 'fptosi', 'uitofp', 'sitofp', 
+    'ptrtoint', 'inttoptr', 'bitcast', 'addrspacecast',
+
+    # Other Operations（其他操作）
+    'icmp', 'fcmp', 'phi', 'select', 'call', 
+    'va_arg', 'landingpad', 'catchpad', 'cleanuppad',
+
+    # Special Instructions（特殊指令）
+    'freeze',  # (LLVM 10+)
+}
+
 
 def setup_logger(log_file):
     """设置日志记录器"""
@@ -58,28 +95,18 @@ def parse_llvm_IR(llvm_ir):
         raise RuntimeError(f"Error parsing LLVM IR: {e}")
 
 def del_debug_info(inst):
-    if '!insn.addr' in inst:
-        idx = inst.index('!insn.addr') - 2
-        inst =  inst[:idx]
-    if '!tbaa' in inst:
-        idx = inst.index('!tbaa') - 2
-        inst =  inst[:idx]
-    if '!llvm.loop' in inst:
-        idx = inst.index('!llvm.loop') - 2
-        inst =  inst[:idx]
     if '"' in inst:
         inst = inst.replace('"','')
+    if '!' in inst:
+        debug_pos = inst.find('!')
+        inst = inst[:debug_pos - 2]
     return inst
 
-def get_global_var_name(operand):
-    return [var.replace(',', '') for var in operand.split() if var.startswith('@')]
-
-def get_global_var_re(input_string):
-    match = re.search(r'@global_var_[\w]+', input_string)
-    return match.group() if match else None
-
 def get_varname(instruction):
-    return instruction[:instruction.index('=')].strip().replace(" ", "")
+    if '=' not in instruction:  # 先检查是否存在
+        return None
+    varname = instruction[:instruction.index('=')].strip()
+    return varname.replace(" ", "")
 
 def get_function_name(operand):
     try:
@@ -89,13 +116,33 @@ def get_function_name(operand):
     except ValueError:
         return 'unknown'
 
-def get_called_function_info(operands, instruction):
+def get_invoke_function_info(operands, instruction):
     try:
-        func_attrs = next(op for op in operands if 'Function Attrs' in op or ('declare' in op and '@' in op))
+        func_attrs = next(op for op in operands if 'Function Attrs' in op or ('declare' in op and '@' in op) or ('define' in op and '@' in op))
         return_type_start = func_attrs.index('declare')+7 if 'declare' in func_attrs else func_attrs.index('define')+6
         return_type_end = func_attrs.index('@')
         func_name_start = func_attrs.index('@')
-        func_name_end = func_attrs.index('(')
+        func_name_end = func_attrs.find('(')
+        return (
+            func_attrs[func_name_start:func_name_end].strip(),
+            func_attrs[return_type_start:return_type_end].strip()
+        )
+    except (StopIteration, ValueError):
+        invoke_pos = instruction.find('invoke')
+         # 从 'invoke' 之后开始查找 '%'
+        percent_pos = instruction.find('%', invoke_pos + len('invoke'))
+        name_edn_pos = instruction.find('(', percent_pos)
+        name = instruction[percent_pos:name_edn_pos]
+        return_type = instruction[invoke_pos + 6: percent_pos].strip()
+        return (name,return_type)
+
+def get_called_function_info(operands, instruction):
+    try:
+        func_attrs = next(op for op in operands if 'Function Attrs' in op or ('declare' in op and '@' in op) or ('define' in op and '@' in op))
+        return_type_start = func_attrs.index('declare')+7 if 'declare' in func_attrs else func_attrs.index('define')+6
+        return_type_end = func_attrs.index('@')
+        func_name_start = func_attrs.index('@')
+        func_name_end = func_attrs.find('(')
         return (
             func_attrs[func_name_start:func_name_end].strip(),
             func_attrs[return_type_start:return_type_end].strip()
@@ -140,7 +187,7 @@ def process_ir_file(ll_file, output_file, global_info_path, struct_info_path):
         inst_id = 0
 
         for function in llvm_mod.functions:
-            function_data = process_function(function, global_var_list, struct_var_list, inst_id)
+            function_data = process_function(function, global_var_list, struct_var_list, inst_id, global_infos)
             if function_data:
                 file_info.append(function_data)
                 inst_id = function_data[function.name]["last_inst_id"] + 1
@@ -156,8 +203,8 @@ def process_ir_file(ll_file, output_file, global_info_path, struct_info_path):
 def normal_struct(input):
     if '"' in input:
         input = input.replace('"','')
-    return re.sub(r'%([\w:.]+)\.\d+', r'%\1', input)
-def process_function(function, global_var_list, struct_var_list, inst_id):
+    return re.sub(r'%([\w:<>.]+)\.\d+', r'%\1', input)
+def process_function(function, global_var_list, struct_var_list, inst_id, global_infos):
     function_blocks = []
     function_calls = set()
     function_vars = set()
@@ -166,7 +213,7 @@ def process_function(function, global_var_list, struct_var_list, inst_id):
     function_consts = set()
     instructions = []
     block_labels = []
-    function_param_list = [str(param) for param in function.arguments]
+    function_param_list = [str(param).replace('"','') for param in function.arguments]
 
     for index,block in enumerate(function.blocks):
         block_data, inst_id = process_block(
@@ -191,6 +238,12 @@ def process_function(function, global_var_list, struct_var_list, inst_id):
     if not function_blocks:
         return None
 
+    function_strings = []
+    for g in function_globals:
+        global_info = global_infos[g]
+        if global_info['type'] == 'string':
+            function_strings.append(global_info['value'])
+
     return {
         function.name: {
             "base_info": {
@@ -201,6 +254,7 @@ def process_function(function, global_var_list, struct_var_list, inst_id):
                 "function_blocks_num": len(function_blocks)
             },
             "block_labels": block_labels,
+            "function_strings": sorted(list(function_strings)),
             "function_calls": sorted(list(function_calls)),
             "function_structs": sorted(list(function_structs)),
             "function_globals": sorted(list(function_globals)),
@@ -247,6 +301,18 @@ def process_block(block, global_var_list, struct_var_list, inst_id, function_cal
         "block_inst_list": [inst["instruction"] for inst in block_insts],
         "block_insts": block_insts
     }, inst_id
+def nomal_operand_list(operand_list: list):
+    normal_operand_list = []
+    for operand in operand_list:
+        if set(operand.split()) & LLVM_OPCODES:
+            normal_operand_list.append(del_debug_info(normal_struct(operand)))
+        else:
+            normal_operand_list.append(operand)
+    return normal_operand_list
+
+def advanced_replace(s, pattern=r'[(),*\]\[\]<>]', replacement=' '):
+    """使用正则表达式处理替换"""
+    return re.sub(pattern, replacement, s).split()
 
 def process_instruction(instruction, inst_id, global_var_list, struct_var_list, function_calls, function_vars, function_globals,function_structs, function_consts):
     instruction_str = del_debug_info(str(instruction).strip())
@@ -264,7 +330,7 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
     old_instruction_str = normalized_instruction
     # 检测全局变量
     # 去除*号是为了做集合&运算时能匹配到结构体指针
-    inst_no_syb = normalized_instruction.replace('(',' ').replace(')',' ').replace(',', ' ').replace('*',' ').replace(']',' ').split()
+    inst_no_syb = advanced_replace(normalized_instruction)
 
     set_inst_no_syb = set(inst_no_syb)
     found_globals = set_inst_no_syb & set(global_var_list)
@@ -280,13 +346,14 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
         if match:
             const = match.group(1)
             function_consts.add(const)
+
     
     # 构建指令信息
     inst_info = {
         "inst_id": str(inst_id),
         "instruction": old_instruction_str,
         "opcode": opcode,
-        "operand_list": [operand for operand in operand_list]   #operand不需要对其中的结构体标准化，防止后续生成图示找不到原结构体定义
+        "operand_list": list(set(nomal_operand_list(operand_list))) #operand不需要对其中的结构体标准化，防止后续生成图示找不到原结构体定义
     }
 
     # 变量提取
@@ -309,13 +376,13 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
         labels = re.findall(r'label (%[\w.-]+)', instruction_str)
         condition = operands[0] if len(operands) > 1 else None
         if condition:
-            condition = normal_struct(condition)    #condition需要对其中的结构体标准化，因为condition通常都是指令，
+            condition = del_debug_info(normal_struct(condition))    #condition需要对其中的结构体标准化，因为condition通常都是指令，
         inst_info.update({
             "condition": condition,
             "targets": labels
         })
     elif opcode == "invoke":
-        func_name, return_type = get_called_function_info(operands, instruction_str)
+        func_name, return_type = get_invoke_function_info(operands, instruction_str)
         if '@' in func_name:
             function_calls.add(func_name)
             inst_info.update({
@@ -323,14 +390,14 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
                 "called_function_return_type": return_type  #return_type不需要对其中的结构体标准化，防止后续生成图示找不到原结构体定义
             })
         labels = re.findall(r'label (%[\w.-]+)', instruction_str)
-        operand_list =  [op for op in operands if not any(kw in op for kw in ['; preds =', 'Function Attrs', 'declare'])]
+        operand_list =  [del_debug_info(op) for op in operands if not any(kw in op for kw in ['; preds =', 'Function Attrs', 'declare', 'define'])]
         inst_info.update({
             "targets": labels,
-            "operand_list": operand_list
+            "operand_list": list(set(nomal_operand_list(operand_list)))
         })
 
     elif opcode == "ret":
-        inst_info["return_value"] = operands[0] if operands else 'void'
+        inst_info["return_value"] = del_debug_info(operands[0]) if operands else 'void'
 
     return inst_info
 

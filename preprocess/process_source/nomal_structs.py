@@ -5,6 +5,41 @@ import time
 import copy
 from tqdm import tqdm
 
+LLVM_OPCODES = {
+    # Terminator Instructions（终止指令）
+    'ret', 'br', 'switch', 'indirectbr', 'invoke', 'resume', 
+    'catchswitch', 'catchret', 'cleanupret', 'unreachable',
+
+    # Binary Operations（二元运算）
+    'add', 'fadd', 'sub', 'fsub', 'mul', 'fmul', 
+    'udiv', 'sdiv', 'fdiv', 'urem', 'srem', 'frem',
+
+    # Bitwise Binary Operations（位运算）
+    'shl', 'lshr', 'ashr', 'and', 'or', 'xor',
+
+    # Vector Operations（向量运算）
+    'extractelement', 'insertelement', 'shufflevector',
+
+    # Aggregate Operations（聚合操作）
+    'extractvalue', 'insertvalue',
+
+    # Memory Access and Addressing（内存访问与寻址）
+    'alloca', 'load', 'store', 'fence', 'cmpxchg', 'atomicrmw',
+    'getelementptr',  # GEP（指针计算）
+
+    # Conversion Operations（类型转换）
+    'trunc', 'zext', 'sext', 'fptrunc', 'fpext', 
+    'fptoui', 'fptosi', 'uitofp', 'sitofp', 
+    'ptrtoint', 'inttoptr', 'bitcast', 'addrspacecast',
+
+    # Other Operations（其他操作）
+    'icmp', 'fcmp', 'phi', 'select', 'call', 
+    'va_arg', 'landingpad', 'catchpad', 'cleanuppad',
+
+    # Special Instructions（特殊指令）
+    'freeze',  # (LLVM 10+)
+}
+
 def load_json_file(file_path):
     with open(file_path, 'r') as f:
         data = json.load(f)
@@ -21,14 +56,16 @@ def get_varname(instruction):
 def normal_struct(input):
     if '"' in input:
         input = input.replace('"','')
-    return re.sub(r'%([\w:.]+)\.\d+', r'%\1', input)
+    return re.sub(r'%([\w:<>.]+)\.\d+', r'%\1', input)
 
 
 def nomal_instruction_struct(instruction,function_structs,struct_norm_struct_map):
+    inst_structs = []
     for struct in function_structs:
         if struct in instruction:
             instruction = re.sub(struct, struct_norm_struct_map[struct], instruction)
-    return instruction
+            inst_structs.append(struct)
+    return instruction, inst_structs
 
 def nomal_operand_struct(operand,function_structs,struct_norm_struct_map):
     for struct in function_structs:
@@ -49,15 +86,18 @@ def nomalize_structs(data):
             for inst in block['block_insts']:
                 instruction = inst['instruction']
                 old_inst = instruction
-                instruction = nomal_instruction_struct(instruction = instruction, function_structs=function_structs, struct_norm_struct_map=struct_norm_struct_map,)
-                
+                instruction, inst_structs = nomal_instruction_struct(instruction = instruction, function_structs=function_structs, struct_norm_struct_map=struct_norm_struct_map,)
+                inst.update({"structs": list(set(inst_structs))})
                 if inst.get('condition'):
                     condition = inst['condition']
-                    inst['condition'] = nomal_instruction_struct(condition, function_structs, struct_norm_struct_map)
+                    # condition一般为指令，需要对指令中的结构体进行标准化
+                    inst['condition'], _ = nomal_instruction_struct(condition, function_structs, struct_norm_struct_map)
                 
                 if inst.get('return_value'):
                     return_value = inst['return_value']
-                    inst['return_value'] = nomal_instruction_struct(return_value, function_structs, struct_norm_struct_map)
+                    # 如果 return_value是指令的话则对其中的结构体标准化
+                    if set(return_value.split()) & LLVM_OPCODES:
+                        inst['return_value']= normal_struct(nomal_instruction_struct(return_value, function_structs, struct_norm_struct_map)[0])
 
                 # 处理参数列表
                 if inst.get('operand_list'):
@@ -66,14 +106,15 @@ def nomalize_structs(data):
                         index = inst['operand_list'].index(operand)
                         
                         #如果该参数是一条指令，则按照指令的方式处理
-                        if operand in raw_function_info['function_instructions']:
-                            operand = normal_struct(operand)  # 去除结构体变量的数字后缀(如果参数中由结构体变量的话)
-                            operand = nomal_instruction_struct(instruction= operand, function_structs=function_structs, struct_norm_struct_map=struct_norm_struct_map,)
-                        else:
-                            operand = nomal_operand_struct(operand, function_structs, struct_norm_struct_map)
+                        if set(operand.split()) & LLVM_OPCODES:
+                            operand = normal_struct(operand)  # 保险起见，再次去除结构体变量的数字后缀(如果参数中由结构体变量的话)
+                            operand, _ = nomal_instruction_struct(instruction= operand, function_structs=function_structs, struct_norm_struct_map=struct_norm_struct_map,)
+                        # 非指令的operand不做处理
+                        '''else:
+                            operand = nomal_operand_struct(operand, function_structs, struct_norm_struct_map)'''
 
                         inst['operand_list'][index] = operand
-                    
+                
                 block_index = block['block_inst_list'].index(old_inst)
                 block['block_inst_list'][block_index] = instruction
 

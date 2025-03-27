@@ -21,7 +21,7 @@ def get_varname(instruction):
 def normal_struct(input):
     if '"' in input:
         input = input.replace('"','')
-    return re.sub(r'%([\w:.]+)\.\d+', r'%\1', input)
+    return re.sub(r'%([\w:<>.]+)\.\d+', r'%\1', input)
 
 
 def nomal_instruction_global(instruction,function_globals,global_norm_global_map):
