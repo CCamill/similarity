@@ -313,23 +313,38 @@ def test9():
 def advanced_replace(s, pattern=r'[(),*\]\[\]<>]', replacement=' '):
     """使用正则表达式处理替换"""
     return re.sub(pattern, replacement, s).split()
+def is_const(input):
+    patt = r'(?:i8|i16|i24|i32|i64)\s+-?\d+'
+    result = re.search(patt, input)
+    if input:
+        return True
+    else:
+        False
+def normal_other_const(input: str):
+    patt = r'(?:i8|i16|i24|i32|i64)\s+-?\d+\s'
+    result = re.search(patt, input)
+    return input.replace(result.group().strip(), result.group().split()[0] + ' <const>')
 
-def test10(file_path):
-    with open(file_path, 'r') as f:
-        data = json.load(f)
-    # 调试：检查嵌套集合
-    def check_nested(obj):
-        if isinstance(obj, dict):
-            for v in obj.values():
-                if isinstance(v, (list, dict)) and any(isinstance(i, (list, dict)) for i in (v.values() if isinstance(v, dict) else v)):
-                    raise ValueError(f"Nested collection in {obj}")
-                check_nested(v)
-        elif isinstance(obj, list):
-            for i in obj:
-                check_nested(i)
-    check_nested(data)  # 触发异常
-    return data
+def test10():
+    instruction = r'store i32 %var57, i32* inttoptr (i64 14200 to i32*), align 8'
+    normal_other_const(instruction)
+import networkx as nx
+def test11():
+    # 创建示例图
+    G = nx.MultiDiGraph()
 
+    # 添加两条边到节点 'a'
+    G.add_edge('b', 'a', edge_type='Sequential', weight=1)
+    G.add_edge('c', 'a', edge_type='DataStore', weight=2)
+
+    # 删除 edge_type 为 'Sequential' 的边
+    for u, v, key, data in G.in_edges('a', keys=True, data=True):
+        if data.get('edge_type') == 'Sequential':
+            G.remove_edge(u, v, key=key)
+            break
+
+    # 验证结果
+    print(list(G.in_edges('a', data=True)))
+    # 输出应该只显示 edge_type='DataStore' 的边
 if __name__ == '__main__':
-    test10(r'/home/lab314/cjw/similarity/datasets/source/norm_summary/MayaPosch_____NymphCast/-Os/box_info_summary.json')
-    
+    test11()

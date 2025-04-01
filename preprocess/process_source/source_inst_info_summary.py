@@ -319,12 +319,6 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
     opcode = str(instruction.opcode).strip()
     operands = [str(op).strip() for op in instruction.operands]
 
-    # struct_pattern = r'%([\w:.]+\.\d+)'
-    # matches = re.findall(struct_pattern, instruction)
-    # if matches:
-    #     function_structs.update(set(matches) & set(struct_var_list))
-
-
     #规范化结构体名称（移除 .数字 后缀）
     normalized_instruction = normal_struct(instruction_str)  # 处理类型名称
     old_instruction_str = normalized_instruction
@@ -340,7 +334,7 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
     function_structs.update(found_structs)
     operand_list = process_operands(operands, opcode)
 
-    pattern = r'^(?:i8|i16|i24|i32|i64)\s+(-?\d+)$'
+    pattern = r'^(?:i8|i16|i24|i32|i64|i128|i256)\s+(-?\d+)$'
     for operand in operand_list:
         match = re.search(pattern,operand)
         if match:
