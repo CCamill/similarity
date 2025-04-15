@@ -11,7 +11,7 @@ EXCLUDED_DIRS = {
     "share", "build", "thirdparty", "testsuite","third_party",
     "third-party", "include", "lib64", "tests", 
     "test", "testsuites", "scripts", "lib-src","lib",
-    "libraries", "cmake-proxies","external"
+    "libraries", "cmake-proxies","external","harfbuzz","sqlite3"
 }
 OPTIMIZERS = ['-O0', '-O1', '-O2', '-O3', '-Os', '-Ofast']
 COMPILE_STANDARDS = {
@@ -150,7 +150,7 @@ def process_project(project_path):
     success_count = 0
     error_log = []
     
-    with Pool(processes=os.cpu_count()//2 or 2) as pool:
+    with Pool(processes=3) as pool:
         task_args = [(f, output_path) for f in source_files]
         task_func = partial(process_single_file, include_dirs=list(include_dirs))
         
@@ -176,7 +176,7 @@ def process_project(project_path):
 
 
 def main():
-    REPOS_ROOT = r"/home/lab314/cjw/ghcc/repos/repos2"
+    REPOS_ROOT = r"/home/lab314/cjw/ghcc/repos/repos1"
     
     ERROR_LOG = r"/home/lab314/cjw/similarity/desend2ir/error_pros.json"
     
@@ -198,6 +198,6 @@ def main():
         if error_projects:
             dump_json_file(error_projects, ERROR_LOG)
 if __name__ == '__main__':
-    proj_path = r'/home/lab314/cjw/ghcc/repos/repos2/MayaPosch_____NymphCast'
-    process_project(proj_path)
-    # main()
+    # proj_path = r'/home/lab314/cjw/ghcc/repos/repos2/MayaPosch_____NymphCast'
+    # process_project(proj_path)
+    main()

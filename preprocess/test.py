@@ -346,5 +346,50 @@ def test11():
     # 验证结果
     print(list(G.in_edges('a', data=True)))
     # 输出应该只显示 edge_type='DataStore' 的边
+
+def test12():
+
+    # LLVM IR 示例文本
+    ir_text = r"store i32 (%struct.hb_color_line_t*, i8*, i32, i32*, %struct.hb_color_stop_t*, i8*)* @_ZN2OT9ColorLineINS_10NoVariableEE22static_get_color_stopsEP15hb_color_line_tPvjPjP15hb_color_stop_tS5_, i32 (%struct.hb_color_line_t*, i8*, i32, i32*, %struct.hb_color_stop_t*, i8*)** %33, align 8"
+
+    # 匹配合法的 LLVM IR 符号（函数名、全局变量名等）
+    pattern = r'@[A-Za-z0-9_.:$~-]+'
+    matches = re.findall(pattern, ir_text)
+
+    print("Matched symbols:")
+    print(matches[0])
+
+
+def extract_complex_args(ir_line):
+    # 使用更智能的分割方式处理嵌套结构
+    func_type_match = re.search(r'store\s+(.+?)\*\s+@\w+', ir_line)
+    if not func_type_match:
+        return None
+    
+    full_type = func_type_match.group(1)
+    args_start = full_type.find('(')
+    args_end = full_type.rfind(')')
+    if args_start == -1 or args_end == -1:
+        return None
+    args_str = full_type[args_start+1:args_end]
+    return args_str
+
+def test13():
+    complex_line = r"store i32 (%struct_7*, i8*, i32, i32*, %struct_8*, i8*)* @function_1, i32 (%struct_7*, i8*, i32, i32*, %struct_8*, i8*)** %33, align 8"
+    # 测试复杂情况
+    complex_args = extract_complex_args(complex_line)
+    print(complex_args)
+
+def test14():
+    log_path = r'datasets/source/iscg/MayaPosch_____NymphCast/log.txt'
+    with open(log_path, "r") as f:
+        for line in f.readlines():
+            st_id = line.index('processing') + 11
+            end_id = line.index('_info_summary.json') + 18
+            path = line[st_id:end_id].replace('norm_summary', 'iscg').replace('_info_summary.json','_iscg.json')
+            if os.path.exists(path):
+                os.remove(path)
+            else:
+                print(path)
 if __name__ == '__main__':
-    test11()
+    test14()

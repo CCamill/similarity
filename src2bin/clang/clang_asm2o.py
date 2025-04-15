@@ -2,9 +2,9 @@ import os
 import subprocess
 from tqdm import tqdm
 
-CLANG_ASM = r'/home/lab314/cjw/similarity/datasets/bin/clang_asm'
-CLANG_O = r'/home/lab314/cjw/similarity/datasets/bin/clang_o'
-CLANG_LL = r'/home/lab314/cjw/similarity/datasets/bin/clang_ll'
+CLANG_ASM = r'/home/lab314/cjw/similarity/datasets/bin/clang/clang_asm'
+CLANG_O = r'/home/lab314/cjw/similarity/datasets/bin/clang/clang_o'
+CLANG_LL = r'/home/lab314/cjw/similarity/datasets/bin/clang/clang_ll'
 
 def asm2o(asm_path, o_path):
     """

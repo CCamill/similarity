@@ -4,13 +4,6 @@
     // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        {
-            "name": "source_inst_info_summary",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/preprocess/process_source/source_inst_info_summary.py",
-            "console": "integratedTerminal",
-            "args": []
-        },
+
     ]
 }

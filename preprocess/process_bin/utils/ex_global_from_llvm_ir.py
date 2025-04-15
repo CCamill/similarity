@@ -18,8 +18,9 @@ def process_single_proj(proj_root):
 
     pbar =  tqdm(total=len(ll_paths), desc=f"{proj_root} Progress")
     for ll_path in ll_paths:
+        bc_path = ll_path.replace('.ll', '.bc')
         dir_path, file_name = os.path.split(ll_path)
-        output_dir = dir_path.replace(r'/source_lls/', r'/global_info/').replace(r'/ir_files/',r'/')
+        output_dir, _ = os.path.split(dir_path.replace(r'/clang_ll/', r'/global_info/'))
         out_path = os.path.join(output_dir,file_name.replace(".ll","_globals.json"))
 
         if not os.path.exists(output_dir):
@@ -27,6 +28,7 @@ def process_single_proj(proj_root):
 
         if os.path.exists(out_path):
             continue
+        os.system(f'llvm-dis {bc_path} -o {ll_path}')
         cmd = f"/home/lab314/cjw/similarity/cpp_utils/ex_global {ll_path} {out_path}"
         try:
             proc = subprocess.Popen(cmd, shell=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -41,13 +43,10 @@ def process_single_proj(proj_root):
     pbar.close()
 
 def main():
-    ll_root = r'/home/lab314/cjw/similarity/datasets/source/source_lls'
-    global_root = r'/home/lab314/cjw/similarity/datasets/source/global_info'
+    ll_root = r'/home/lab314/cjw/similarity/datasets/bin/clang/clang_ll'
     for proj in os.listdir(ll_root):
         proj_root = os.path.join(ll_root, proj)
-        proj_global_root = os.path.join(global_root, proj)
-        if not os.path.exists(proj_global_root):
-            os.makedirs(proj_global_root)
         process_single_proj(proj_root)
 if __name__ == '__main__':
-    process_single_proj(r'/home/lab314/cjw/similarity/datasets/source/source_lls/OpenMathLib_____OpenBLAS')
+    main()
+    # process_single_proj(r'/home/lab314/cjw/similarity/datasets/bin/clang/clang_ll/MayaPosch_____NymphCast')

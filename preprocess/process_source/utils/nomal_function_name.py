@@ -23,7 +23,6 @@ def get_common_function_list(function_call_counter_path: str):
     return data.keys()
 
 def nomal_function(instruction, function_calls, calls_norm_calls_map):
-    
     for function_call in function_calls:
         if function_call in common_function_list or function_call.startswith("@llvm."):
             pass
@@ -88,8 +87,12 @@ def processing_single_proj(proj_path):
     json_paths = collect_json_files(proj_path)
     for json_path in json_paths:
         out_path = json_path.replace('/summary/','/norm_summary/')
+        if all([
+            os.path.exists(json_path), 
+            not os.path.exists(out_path)
+        ]):
         
-        task_args.append((json_path,out_path))
+            task_args.append((json_path,out_path))
     pbar = tqdm(total=len(task_args))
     for json_path, out_path in task_args:
         out_dir,out_name = os.path.split(out_path)

@@ -12,7 +12,6 @@ import logging
 from multiprocessing import Pool
 from functools import partial
 from operator import itemgetter
-from source_normalize import nomalize_files
 
 LLVM_OPCODES = {
     # Terminator Instructions（终止指令）
@@ -135,6 +134,10 @@ def get_invoke_function_info(operands, instruction):
         name = instruction[percent_pos:name_edn_pos]
         return_type = instruction[invoke_pos + 6: percent_pos].strip()
         return (name,return_type)
+def get_store_function_info(instruction):
+    pattern = r'@[A-Za-z0-9_.:$~-]+'
+    matches = re.findall(pattern, instruction)
+    return matches[0]
 
 def get_called_function_info(operands, instruction):
     try:
@@ -347,7 +350,7 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
         "inst_id": str(inst_id),
         "instruction": old_instruction_str,
         "opcode": opcode,
-        "operand_list": list(set(nomal_operand_list(operand_list))) #operand不需要对其中的结构体标准化，防止后续生成图示找不到原结构体定义
+        "operand_list": (nomal_operand_list(operand_list)) #operand不需要对其中的结构体标准化，防止后续生成图示找不到原结构体定义
     }
 
     # 变量提取
@@ -365,7 +368,13 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
                 "called_function_name": func_name,
                 "called_function_return_type": return_type  #return_type不需要对其中的结构体标准化，防止后续生成图示找不到原结构体定义
             })
-
+    elif opcode == 'store' and len(operand_list) == 1:
+        func_name = get_store_function_info(instruction_str)
+        if '@' in func_name:
+            function_calls.add(func_name)
+            inst_info.update({
+                "store_called_function_name": func_name,
+            })
     elif opcode in ["br", "switch"]:
         labels = re.findall(r'label (%[\w.-]+)', instruction_str)
         condition = operands[0] if len(operands) > 1 else None
@@ -500,5 +509,5 @@ def summary_source_ir():
         processing_single_proj(proj_path)
 
 if __name__ == "__main__":
-    proj_path = r'/home/lab314/cjw/similarity/datasets/source/source_lls/MayaPosch_____NymphCast'
-    processing_single_proj(proj_path)
+    # processing_single_proj(r'/home/lab314/cjw/similarity/datasets/source/source_lls/MayaPosch_____NymphCast')
+    summary_source_ir()

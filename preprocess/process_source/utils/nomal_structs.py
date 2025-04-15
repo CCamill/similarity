@@ -80,7 +80,10 @@ def nomalize_structs(data):
 
         function_structs =  function['function_structs']
         struct_norm_struct_map = {struct: r"%struct_" + str(function_structs.index(struct)) for struct in function_structs}
-
+        function_param_list = function['function_param_list']
+        for param in function_param_list:
+            idx = function_param_list.index(param)
+            function['function_param_list'][idx] = param.split()[-1]
 
         for block in function['function_blocks']:
             for inst in block['block_insts']:
@@ -119,7 +122,7 @@ def nomalize_structs(data):
                 block['block_inst_list'][block_index] = instruction
 
                 fun_index = function['function_instructions'].index(old_inst)
-                function['function_instructions'][fun_index] = instruction   
+                function['function_instructions'][fun_index] = instruction 
 
                 inst['instruction'] = instruction
     return 1

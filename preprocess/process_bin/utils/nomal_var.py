@@ -38,7 +38,7 @@ def nomalize_var(data):
         raw_function_info = copy.deepcopy(function)
 
         function_vars = function['function_vars']
-        var_norm_var_map = {var: r"%var" + str(function_vars.index(var)) for var in function_vars}
+        var_norm_var_map = {var: r"%" + str(function_vars.index(var)) for var in function_vars}
         function_param_list = function['function_param_list']
         param_norm_param_map = {param: r"%arg" + str(function_param_list.index(param) + 1) for param in function_param_list}
         function['function_param_list'] = list(param_norm_param_map.values())

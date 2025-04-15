@@ -47,7 +47,10 @@ LLVM_OPCODES = {
     # Special Instructions（特殊指令）
     'freeze',  # (LLVM 10+)
 }
-
+def get_store_function_info(instruction):
+    pattern = r'@[A-Za-z0-9_.:$~-]+'
+    matches = re.findall(pattern, instruction)
+    return matches[0]
 
 def setup_logger(log_file):
     """设置日志记录器"""
@@ -175,6 +178,8 @@ def process_ir_file(ll_file, output_file, global_info_path, struct_info_path):
         llvm.initialize_native_asmprinter()
         llvm.initialize_native_asmparser()
 
+        bc_path = ll_file.replace('.ll', '.bc')
+        os.system(f'llvm-dis {bc_path} -o {ll_file}')
         llvm_ir = generate_llvm_ir(ll_file)
         llvm_mod = parse_llvm_IR(llvm_ir)
         global_infos = load_json_file(global_info_path)
@@ -321,8 +326,6 @@ def advanced_replace(s, pattern=r'[(),*\]\[\]<>]', replacement=' '):
 
 def process_instruction(instruction, inst_id, global_var_list, struct_var_list, function_calls, function_vars, function_globals,function_structs, function_consts):
     instruction_str = del_debug_info(str(instruction).strip())
-    
-
     opcode = str(instruction.opcode).strip()
     operands = [str(op).strip() for op in instruction.operands]
 
@@ -362,8 +365,6 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
         inst_info["var_name"] = var_name
         function_vars.add(var_name)
 
-    
-
     # 特殊指令处理
     if opcode in ["call"]:
         func_name, return_type = get_called_function_info(operands, instruction_str)
@@ -372,6 +373,13 @@ def process_instruction(instruction, inst_id, global_var_list, struct_var_list, 
             inst_info.update({
                 "called_function_name": func_name,
                 "called_function_return_type": return_type  #return_type不需要对其中的结构体标准化，防止后续生成图示找不到原结构体定义
+            })
+    elif opcode == 'store' and len(operand_list) == 1:
+        func_name = get_store_function_info(instruction_str)
+        if '@' in func_name:
+            function_calls.add(func_name)
+            inst_info.update({
+                "store_called_function_name": func_name,
             })
 
     elif opcode in ["br", "switch"]:
@@ -473,10 +481,6 @@ def processing_single_proj(proj_path):
             ]):
                 task_args.append((ll_path, output_path, global_path, struct_path, log_file))
 
-    # 跳过超大项目
-    # if len(task_args) > 3000:
-    #     logging.warning(f"Project {proj_name} has {len(task_args)} tasks, skipping")
-    #     continue
 
     # 使用进程池处理
     with Pool(processes=2) as pool:
@@ -497,12 +501,11 @@ def processing_single_proj(proj_path):
         logging.info("-" * 60)
 
 def summary_bin_ir():
-    ll_path = r"/home/lab314/cjw/similarity/datasets/bin/gcc/bin_lls"
+    ll_path = r"/home/lab314/cjw/similarity/datasets/bin/clang/clang_ll"
     for proj_name in os.listdir(ll_path):
         proj_path = os.path.join(ll_path, proj_name)
         processing_single_proj(proj_path)
 
 if __name__ == "__main__":
-    # summary_bin_ir()
-    proj_path = r'/home/lab314/cjw/similarity/datasets/bin/clang/clang_ll/MayaPosch_____NymphCast'
-    processing_single_proj(proj_path)
+    summary_bin_ir()
+    # processing_single_proj(r'/home/lab314/cjw/similarity/datasets/bin/clang/clang_ll/OpenMathLib_____OpenBLAS')

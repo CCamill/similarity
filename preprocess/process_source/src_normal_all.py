@@ -4,11 +4,11 @@ import json
 import time
 import copy
 from tqdm import tqdm
-from nomal_const import nomalize_consts
-from nomal_function_name import nomalize_function_name
-from nomal_global import nomalize_global_var
-from nomal_structs import nomalize_structs
-
+from utils.nomal_const import nomalize_consts
+from utils.nomal_function_name import nomalize_function_name
+from utils.nomal_global import nomalize_global_var
+from utils.nomal_structs import nomalize_structs
+from utils.nomal_operands import nomalize_operands
 def load_json_file(file_path):
     with open(file_path, 'r') as f:
         data = json.load(f)
@@ -32,13 +32,17 @@ def collect_json_files(proj_root):
     return json_paths
 
 def processing_single_proj(proj_path):
+    proj_name = os.path.basename(proj_path)
     task_args = []
     json_paths = collect_json_files(proj_path)
     for json_path in json_paths:
         out_path = json_path.replace('/summary/','/norm_summary/')
-        
-        task_args.append((json_path,out_path))
-    pbar = tqdm(total=len(task_args))
+        if all([
+            os.path.exists(json_path), 
+            not os.path.exists(out_path)
+        ]):
+            task_args.append((json_path,out_path))
+    pbar = tqdm(total=len(task_args), desc=f"[{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}]Processing {proj_name}",leave=False)
     for json_path, out_path in task_args:
         out_dir,out_name = os.path.split(out_path)
         if not os.path.exists(out_dir):
@@ -49,6 +53,7 @@ def processing_single_proj(proj_path):
         nomalize_consts(data)
         nomalize_function_name(data)
         nomalize_global_var(data)
+        # nomalize_operands(data)
         
         dump_json_file(data, out_path)
         pbar.update(1)
@@ -60,5 +65,5 @@ def main():
         proj_path = os.path.join(proj_summaries_dir, proj)
         processing_single_proj(proj_path)
 if __name__ == '__main__':
-    # main()
-    processing_single_proj(r'/home/lab314/cjw/similarity/datasets/source/summary/MayaPosch_____NymphCast')
+    main()
+    # processing_single_proj(r'/home/lab314/cjw/similarity/datasets/source/summary/MayaPosch_____NymphCast')

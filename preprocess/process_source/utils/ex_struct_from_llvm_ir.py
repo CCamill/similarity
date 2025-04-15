@@ -51,4 +51,5 @@ def main():
         proj_root = os.path.join(ll_root, proj)
         process_single_proj(proj_root)
 if __name__ == '__main__':
-    process_single_proj(r'/home/lab314/cjw/similarity/datasets/source/source_lls/OpenMathLib_____OpenBLAS')
+    main()
+    # process_single_proj(r'/home/lab314/cjw/similarity/datasets/source/source_lls/OpenMathLib_____OpenBLAS')

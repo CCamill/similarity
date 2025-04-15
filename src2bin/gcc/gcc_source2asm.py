@@ -125,7 +125,7 @@ def compile_file(args):
             errors.append(error_msg)
             logger.error(error_msg)
         except Exception as e:
-            error_msg = f"Unexpected error [{opti}] {base_name}: {str(e)}"
+            error_msg = f"Unexpected error [{opti}] { }: {str(e)}"
             errors.append(error_msg)
             logger.error(error_msg)
 

@@ -4,8 +4,8 @@ import time
 from tqdm import tqdm
 from multiprocessing import Pool
 
-CLANG_O = r'/home/lab314/cjw/similarity/datasets/bin/clang_o'
-CLANG_LL = r'/home/lab314/cjw/similarity/datasets/bin/clang_ll'
+CLANG_O = r'/home/lab314/cjw/similarity/datasets/bin/clang/clang_o'
+CLANG_LL = r'/home/lab314/cjw/similarity/datasets/bin/clang/clang_ll'
 
 def o2ll(o_path, ll_path):
     cmd = f"/home/lab314/cjw/similarity/RetDec/bin/retdec-decompiler {o_path} -o {ll_path}"
@@ -112,6 +112,5 @@ def main():
         process_single_proj(proj_o_dir)
         
 if __name__ == '__main__':
-    # main()
-    proj_o_dir = r'/home/lab314/cjw/similarity/datasets/bin/clang_o/MayaPosch_____NymphCast'
-    process_single_proj(proj_o_dir)
+    main()
+    # process_single_proj(r'/home/lab314/cjw/similarity/datasets/bin/clang_o/MayaPosch_____NymphCast')

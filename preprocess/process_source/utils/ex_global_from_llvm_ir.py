@@ -18,9 +18,8 @@ def process_single_proj(proj_root):
 
     pbar =  tqdm(total=len(ll_paths), desc=f"{proj_root} Progress")
     for ll_path in ll_paths:
-        # ll_path = r'/home/lab314/cjw/similarity/datasets/source/source_lls/xCuri0_____ReBarUEFI/ir_files/-Os/ReBarState.ll'
         dir_path, file_name = os.path.split(ll_path)
-        output_dir, _ = os.path.split(dir_path.replace(r'/clang_ll/', r'/global_info/'))
+        output_dir = dir_path.replace(r'/source_lls/', r'/global_info/').replace(r'/ir_files/',r'/')
         out_path = os.path.join(output_dir,file_name.replace(".ll","_globals.json"))
 
         if not os.path.exists(output_dir):
@@ -42,9 +41,14 @@ def process_single_proj(proj_root):
     pbar.close()
 
 def main():
-    ll_root = r'/home/lab314/cjw/similarity/datasets/bin/clang/clang_lls'
+    ll_root = r'/home/lab314/cjw/similarity/datasets/source/source_lls'
+    global_root = r'/home/lab314/cjw/similarity/datasets/source/global_info'
     for proj in os.listdir(ll_root):
         proj_root = os.path.join(ll_root, proj)
+        proj_global_root = os.path.join(global_root, proj)
+        if not os.path.exists(proj_global_root):
+            os.makedirs(proj_global_root)
         process_single_proj(proj_root)
 if __name__ == '__main__':
-    process_single_proj(r'/home/lab314/cjw/similarity/datasets/bin/clang/clang_ll/MayaPosch_____NymphCast')
+    main()
+    # process_single_proj(r'/home/lab314/cjw/similarity/datasets/source/source_lls/OpenMathLib_____OpenBLAS')
